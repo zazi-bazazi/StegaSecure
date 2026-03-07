@@ -1,34 +1,47 @@
 package org.example.model.image;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.ArrayList;
 
 public class SparseDCTMatrix {
-    // The Adjacency List representation of the matrix
-    private final ArrayList<LinkedList<DCTNode>> adjacencyMatrix;
-    private final int totalBlocks;
+    private final ArrayList<ArrayList<DCTNode>> adjacencyMatrix;
 
-    public SparseDCTMatrix(int totalBlocks) {
-        this.totalBlocks = totalBlocks;
+    private final int totalBlocks;
+    private final int imageWidth;
+    private final int imageHeight;
+
+    public SparseDCTMatrix(int width, int height) {
+        this.imageHeight = height;
+        this.imageWidth = width;
+        this.totalBlocks = calculateTotalBlocks(width, height);
+
         this.adjacencyMatrix = new ArrayList<>(totalBlocks);
 
-        // Initialize an empty linked list for every block
         for (int i = 0; i < totalBlocks; i++) {
-            adjacencyMatrix.add(new LinkedList<>());
+            adjacencyMatrix.add(new ArrayList<>());
         }
     }
 
-    // Add a value to the specific block's linked list
-    public void addCoefficient(int blockIndex, int coeffIndex, double value) {
-        if (value == 0.0) return; // The core rule of sparse matrices
+    public SparseDCTMatrix(SparseDCTMatrix original) {
+        this.imageWidth = original.imageWidth;
+        this.imageHeight = original.imageHeight;
+        this.totalBlocks = calculateTotalBlocks(original.imageWidth, original.imageHeight);
 
-        LinkedList<DCTNode> blockList = adjacencyMatrix.get(blockIndex);
+        this.adjacencyMatrix = new ArrayList<>(this.totalBlocks);
 
-        // Optional: Check if the coefficient already exists to update it,
-        // otherwise add a new node to the end of the list.
+        for (int i = 0; i < this.totalBlocks; i++) {
+            ArrayList<DCTNode> newBlockList = new ArrayList<>();
+            ArrayList<DCTNode> originalBlockList = original.getNonZeroCoefficientsForBlock(i);
+            for (DCTNode oldNode : originalBlockList) {
+                newBlockList.add(new DCTNode(oldNode.getCoefficientIndex(), oldNode.getValue()));
+            }
+            this.adjacencyMatrix.add(newBlockList);
+        }
+    }
+
+    public void setCoefficient(int blockIndex, int coeffIndex, double value) {
+        if (value == 0.0) return;
+        ArrayList<DCTNode> blockList = adjacencyMatrix.get(blockIndex);
         for (DCTNode node : blockList) {
             if (node.getCoefficientIndex() == coeffIndex) {
                 node.setValue(value);
@@ -39,23 +52,34 @@ public class SparseDCTMatrix {
         blockList.add(new DCTNode(coeffIndex, value));
     }
 
-    // Retrieve a value from the adjacency list
     public double getCoefficient(int blockIndex, int coeffIndex) {
-        LinkedList<DCTNode> blockList = adjacencyMatrix.get(blockIndex);
-
-        // Traverse the linked list to find the coefficient
+        ArrayList<DCTNode> blockList = adjacencyMatrix.get(blockIndex);
         for (DCTNode node : blockList) {
             if (node.getCoefficientIndex() == coeffIndex) {
                 return node.getValue();
             }
         }
-
-        // If it's not in the linked list, it means it's a zero!
         return 0.0;
     }
 
-    // This is super useful for the Genetic Algorithm later
-    public LinkedList<DCTNode> getNonZeroCoefficientsForBlock(int blockIndex) {
+    public ArrayList<DCTNode> getNonZeroCoefficientsForBlock(int blockIndex) {
         return adjacencyMatrix.get(blockIndex);
     }
+
+    private static int calculateTotalBlocks(int width, int height) {
+        int blocksX = (int) Math.ceil(width / 8.0);
+        int blocksY = (int) Math.ceil(height / 8.0);
+
+        return blocksX * blocksY;
+    }
+
+    public int getWidth() {
+        return this.imageWidth;
+    }
+
+    public int getHeight() {
+        return this.imageHeight;
+    }
+
+
 }

@@ -15,6 +15,7 @@ public class Chromosome implements IChromosome {
         this.fitnessScore = 0.0;
     }
 
+    @Override
     public void addGene(IGene gene) {
         this.chromosomeGenes.add(gene);
     }

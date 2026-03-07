@@ -2,6 +2,8 @@ package org.example.model.image;
 
 public class DCTMath {
 
+    private DCTMath() {}
+
     // FORWARD DCT
     public static double[][] calculateDCT(double[][] spatialBlock) {
         double[][] frequencyBlock = new double[8][8];

@@ -1,5 +1,6 @@
 package org.example.model.stego;
 
+import org.example.model.ga.GeneticAlgorithm;
 import org.example.model.ga.Population;
 import org.example.model.ga.interfaces.IChromosome;
 import org.example.model.ga.interfaces.IGene;
@@ -30,8 +31,13 @@ public class Engine {
         }
         return instance;
     }
+    public void startEvolution(String secretBits) {
+        GeneticAlgorithm ga = new GeneticAlgorithm();
 
-    public double evaluateChromosome(IChromosome chromosome, String secretBits) {
+        ga.runGeneration(chromo -> evaluate(chromo, secretBits));
+    }
+
+    private double evaluate(IChromosome chromosome, String secretBits) {
         SparseDCTMatrix tempDCT = new SparseDCTMatrix(this.frequencyDomain);
         List<IGene> genes = chromosome.getGenes();
         for (int i = 0; i < secretBits.length(); i++) {

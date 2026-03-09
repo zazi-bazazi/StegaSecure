@@ -4,15 +4,14 @@ import java.util.ArrayList;
 
 public class ImageProcessor {
 
-    private static ImageProcessor instance = null;
-
     private ImageProcessor() {}
 
+    private static class Holder {
+        private static final ImageProcessor INSTANCE = new ImageProcessor();
+    }
+
     public static ImageProcessor getInstance() {
-        if (instance == null) {
-            instance = new ImageProcessor();
-        }
-        return instance;
+        return Holder.INSTANCE;
     }
 
     // Converts the full image into a Sparse Matrix

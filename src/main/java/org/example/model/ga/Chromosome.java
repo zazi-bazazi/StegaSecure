@@ -16,6 +16,11 @@ public class Chromosome implements IChromosome {
     }
 
     @Override
+    public IChromosome createEmpty() {
+        return new Chromosome();
+    }
+
+    @Override
     public void addGene(IGene gene) {
         this.chromosomeGenes.add(gene);
     }

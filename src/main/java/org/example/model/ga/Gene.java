@@ -1,40 +1,52 @@
 package org.example.model.ga;
 
-import org.example.model.ga.interfaces.IGene;
+import org.example.model.ga.abstractClasses.AbstractChromosome;
+import org.example.model.ga.abstractClasses.AbstractGene;
 
-public class Gene extends IGene {
+public class Gene extends AbstractGene<Integer> {
+    private static final int COEFF_MIN = 10;
+    private static final int COEFF_MAX = 50;
+
     private final int blockIndex;
-    private final int coefficientIndex;
 
-    public Gene(int blockIndex, int coefficientIndex) {
-        this.blockIndex = blockIndex;
-        this.coefficientIndex = coefficientIndex;
+
+    public Gene(Integer value, Object... params) {
+        super(value);
+        this.blockIndex = (int) params[0];
     }
 
-    @Override
     public int getBlockIndex() {
-        return blockIndex;
+        return this.blockIndex;
     }
 
-    @Override
     public int getCoefficientIndex() {
-        return coefficientIndex;
+        return this.value;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Gene gene)) return false;
-        return blockIndex == gene.blockIndex && coefficientIndex == gene.coefficientIndex;
+        return blockIndex == gene.blockIndex && this.value == gene.value;
     }
 
     @Override
     public int hashCode() {
-        return 31 * blockIndex + coefficientIndex;
+        return 31 * this.blockIndex + this.value;
     }
 
     @Override
     public String toString() {
-        return "(" + blockIndex + "," + coefficientIndex + ")";
+        return "(" + this.blockIndex + "," + this.value + ")";
+    }
+
+    public static AbstractChromosome buildMidFrequencyPool(int totalBlocks) {
+        AbstractChromosome pool = new Chromosome();
+        for (int block = 0; block < totalBlocks; block++) {
+            for (int coeff = COEFF_MIN; coeff <= COEFF_MAX; coeff++) {
+                pool.addGene(new Gene(block, coeff));
+            }
+        }
+        return pool;
     }
 }

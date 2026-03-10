@@ -1,16 +1,15 @@
 package org.example.model.stego;
 
+import org.example.model.ga.Chromosome;
+import org.example.model.ga.Gene;
 import org.example.model.ga.GeneticAlgorithm;
 import org.example.model.ga.Population;
-import org.example.model.ga.interfaces.IChromosome;
-import org.example.model.ga.interfaces.IGene;
+import org.example.model.ga.abstractClasses.AbstractGene;
 import org.example.model.image.ImageProcessor;
-import org.example.model.image.MatrixCoordinate;
 import org.example.model.image.SparseDCTMatrix;
 import org.example.model.image.SpatialMatrix;
 
-import java.util.List;
-import java.util.Map;
+import java.util.ArrayList;
 
 public class Engine {
     private static Engine instance = null;
@@ -31,27 +30,54 @@ public class Engine {
         }
         return instance;
     }
-    public void startEvolution(String secretBits) {
+    public void startEvolution(String secretBits, int totalBlocks) {
         GeneticAlgorithm ga = new GeneticAlgorithm();
 
-        ga.runGeneration(chromo -> evaluate(chromo, secretBits));
+        Population emptyPop = new Population();
+        Chromosome prototype = new Chromosome();
+
+        int popSize = 100;
+
+        ga.initializePopulation(emptyPop, prototype, popSize, totalBlocks, secretBits.length());
+
+        ga.runGeneration(chromo -> evaluate((Chromosome) chromo, secretBits));
     }
 
-    private double evaluate(IChromosome chromosome, String secretBits) {
+    private double evaluate(Chromosome chromosome, String secretBits) {
         SparseDCTMatrix tempDCT = new SparseDCTMatrix(this.frequencyDomain);
-        List<IGene> genes = chromosome.getGenes();
-        for (int i = 0; i < secretBits.length(); i++) {
-            IGene targetGene = genes.get(i);
-            char secretBit = secretBits.charAt(i);
+        ArrayList<AbstractGene<?>> genes = chromosome.getGenes();
 
-            double modifiedCoefficient = ParityModifier(tempDCT.getCoefficient(targetGene.getBlockIndex(), targetGene.getCoefficientIndex()), secretBit);
-            tempDCT.setCoefficient(targetGene.getBlockIndex(), targetGene.getCoefficientIndex(), modifiedCoefficient);
+        int embedded = 0;
+        int skipped = 0;
+
+        for (int i = 0; i < secretBits.length(); i++) {
+                Gene targetGene = (Gene) genes.get(i);
+
+            double original = tempDCT.getCoefficient(
+                    targetGene.getBlockIndex(),
+                    targetGene.getCoefficientIndex()
+            );
+
+            if (Math.abs(original) < 1.0) {
+                skipped++;
+                continue;
+            }
+
+            char secretBit = secretBits.charAt(i);
+            double modified = ParityModifier(original, secretBit);
+            tempDCT.setCoefficient(
+                    targetGene.getBlockIndex(),
+                    targetGene.getCoefficientIndex(),
+                    modified
+            );
+            embedded++;
         }
 
         SpatialMatrix stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(tempDCT);
-
         double psnrScore = ImageMetrics.calculatePSNR(this.spatialDomain, stegoImage);
+
         if (psnrScore < MINIMAL_QUALITY) psnrScore = psnrScore / PENALTY;
+        psnrScore -= skipped * PENALTY;
         chromosome.setFitnessScore(psnrScore);
 
         return psnrScore;
@@ -62,7 +88,12 @@ public class Engine {
         if ((intCoef & 1) == bit - '0') {
             return (double)intCoef;
         }
-        return (double)(intCoef - 1);
+        if (intCoef >= 0) {
+            return (intCoef % 2 == 0) ? (double)(intCoef + 1) : (double)(intCoef - 1);
+        } else {
+            // For negative: -4 → LSB of abs value, adjust carefully
+            return (intCoef % 2 == 0) ? (double)(intCoef - 1) : (double)(intCoef + 1);
+        }
     }
 
 }

@@ -2,7 +2,7 @@ package org.example.model.ga;
 
 import org.example.model.ga.interfaces.IGene;
 
-public class Gene implements IGene {
+public class Gene extends IGene {
     private final int blockIndex;
     private final int coefficientIndex;
 

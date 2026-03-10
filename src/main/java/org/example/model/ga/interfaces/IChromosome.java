@@ -2,10 +2,10 @@ package org.example.model.ga.interfaces;
 
 import java.util.List;
 
-public interface IChromosome extends Comparable<IChromosome> {
-    IChromosome createEmpty();
-    void addGene(IGene gene);
-    List<IGene> getGenes();
-    Double getFitnessScore();
-    void setFitnessScore(Double score);
+public abstract class IChromosome implements Comparable<IChromosome> {
+    public abstract IChromosome createEmpty();
+    public abstract void addGene(IGene gene);
+    public abstract List<IGene> getGenes();
+    public abstract Double getFitnessScore();
+    public abstract void setFitnessScore(Double score);
 }

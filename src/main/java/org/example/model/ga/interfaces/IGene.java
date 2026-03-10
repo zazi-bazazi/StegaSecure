@@ -1,6 +1,6 @@
 package org.example.model.ga.interfaces;
 
-public interface IGene {
-    int getBlockIndex();
-    int getCoefficientIndex();
+public abstract class IGene {
+    public abstract int getBlockIndex();
+    public abstract int getCoefficientIndex();
 }

@@ -6,7 +6,7 @@ import org.example.model.ga.interfaces.IGene;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Chromosome implements IChromosome {
+public class Chromosome extends IChromosome {
     private final ArrayList<IGene> chromosomeGenes;
     private Double fitnessScore;
 

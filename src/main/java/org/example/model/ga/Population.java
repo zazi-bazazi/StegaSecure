@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Population implements IPopulation {
+public class Population extends IPopulation {
     private final Map<IChromosome, List<IChromosome>> adjList;
 
     public Population() {

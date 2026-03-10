@@ -6,6 +6,33 @@ public class ImageProcessor {
 
     private ImageProcessor() {}
 
+    // Packing LUT: Maps [u][v] to a 1D ZigZag Index (0-63)
+    private static final int[][] ZIGZAG_INDEX = {
+            { 0,  1,  5,  6, 14, 15, 27, 28},
+            { 2,  4,  7, 13, 16, 26, 29, 42},
+            { 3,  8, 12, 17, 25, 30, 41, 43},
+            { 9, 11, 18, 24, 31, 40, 44, 53},
+            {10, 19, 23, 32, 39, 45, 52, 54},
+            {20, 22, 33, 38, 46, 51, 55, 60},
+            {21, 34, 37, 47, 50, 56, 59, 61},
+            {35, 36, 48, 49, 57, 58, 62, 63}
+    };
+
+    // Unpacking LUTs: Maps a 1D ZigZag Index (0-63) back to u and v coordinates
+    private static final int[] ZIGZAG_U = {
+            0, 0, 1, 2, 1, 0, 0, 1, 2, 3, 4, 3, 2, 1, 0, 0,
+            1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, 0, 0, 1, 2, 3,
+            4, 5, 6, 7, 7, 6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 6,
+            7, 7, 6, 5, 4, 3, 4, 5, 6, 7, 7, 6, 5, 6, 7, 7
+    };
+
+    private static final int[] ZIGZAG_V = {
+            0, 1, 0, 0, 1, 2, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5,
+            4, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4,
+            3, 2, 1, 0, 1, 2, 3, 4, 5, 6, 7, 7, 6, 5, 4, 3,
+            2, 3, 4, 5, 6, 7, 7, 6, 5, 4, 5, 6, 7, 7, 6, 7
+    };
+
     private static class Holder {
         private static final ImageProcessor INSTANCE = new ImageProcessor();
     }
@@ -70,12 +97,12 @@ public class ImageProcessor {
 
 
     private void saveBlockToSparseMatrix(SparseDCTMatrix sparseMatrix, double[][] freqBlock, int blockIndex) {
-        int coeffIndex = 0;
         for (int u = 0; u < 8; u++) {
             for (int v = 0; v < 8; v++) {
-                // The SparseDCTMatrix class handles dropping the zeros internally
+                // Instantly grab the correct zig-zag index from the LUT
+                int coeffIndex = ZIGZAG_INDEX[u][v];
+
                 sparseMatrix.setCoefficient(blockIndex, coeffIndex, freqBlock[u][v]);
-                coeffIndex++;
             }
         }
     }
@@ -121,8 +148,12 @@ public class ImageProcessor {
         ArrayList<DCTNode> coefficientsBlock = matrix.getNonZeroCoefficientsForBlock(index);
 
         for (DCTNode node : coefficientsBlock) {
-            int u = node.getCoefficientIndex() / 8;
-            int v = node.getCoefficientIndex() % 8;
+            int coeffIndex = node.getCoefficientIndex();
+
+            // Use the LUTs to instantly translate the 1D index back to 2D
+            int u = ZIGZAG_U[coeffIndex];
+            int v = ZIGZAG_V[coeffIndex];
+
             block[u][v] = node.getValue();
         }
         return block;

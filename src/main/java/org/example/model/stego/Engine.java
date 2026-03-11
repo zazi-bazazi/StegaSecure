@@ -4,17 +4,20 @@ import org.example.model.ga.Chromosome;
 import org.example.model.ga.Gene;
 import org.example.model.ga.GeneticAlgorithm;
 import org.example.model.ga.Population;
+import org.example.model.ga.abstractClasses.AbstractChromosome;
 import org.example.model.ga.abstractClasses.AbstractGene;
+import org.example.model.ga.abstractClasses.FitnessFunction;
 import org.example.model.image.ImageProcessor;
 import org.example.model.image.SparseDCTMatrix;
 import org.example.model.image.SpatialMatrix;
 
 import java.util.ArrayList;
+import java.util.function.Predicate;
 
 public class Engine {
     private static Engine instance = null;
 
-    private Population population;
+    private GeneticAlgorithm ga;
     private SparseDCTMatrix frequencyDomain;
     private SpatialMatrix spatialDomain;
 
@@ -24,31 +27,46 @@ public class Engine {
     private Engine() {
     }
 
+    private void setGeneticAlgorithm(GeneticAlgorithm ga) {this.ga = ga;}
+
     public static synchronized Engine getInstance() {
         if (instance == null) {
             instance = new Engine();
         }
         return instance;
     }
-    public void startEvolution(String secretBits, int totalBlocks) {
-        GeneticAlgorithm ga = new GeneticAlgorithm();
-
+    public void GeneticAlgorithmManager(String secretBits, int totalBlocks) {
         Population emptyPop = new Population();
-        Chromosome prototype = new Chromosome();
+        AbstractChromosome<?> emptyChro = new Chromosome();
 
-        int popSize = 100;
+        FitnessFunction evaluator = (chromosome) -> this.evaluateFitness((Chromosome) chromosome, secretBits);
 
-        ga.initializePopulation(emptyPop, prototype, popSize, totalBlocks, secretBits.length());
+        Predicate<AbstractChromosome<?>> stopEarly = (chromosome) -> chromosome.getFitnessScore() >= 60.0;
 
-        ga.runGeneration(chromo -> evaluate((Chromosome) chromo, secretBits));
+
+        GeneticAlgorithm ga = new GeneticAlgorithm(evaluator, totalBlocks, secretBits.length());
+        setGeneticAlgorithm(ga);
+
+//        ga.initializePopulation(emptyPop, emptyChro);
+//
+//        ga.runGeneration();
+        AbstractChromosome<?> finalChro = (Chromosome) ga.evolve(emptyPop, emptyChro, stopEarly);
+
+        System.out.println("Finished! Best PSNR: " + finalChro.getFitnessScore());
     }
 
-    private double evaluate(Chromosome chromosome, String secretBits) {
+    private double evaluateFitness(AbstractChromosome<?> chromosome, String secretBits) {
         SparseDCTMatrix tempDCT = new SparseDCTMatrix(this.frequencyDomain);
-        ArrayList<AbstractGene<?>> genes = chromosome.getGenes();
+        ArrayList<AbstractGene<?>> genes = ((Chromosome) chromosome).getGenes();
 
         int embedded = 0;
         int skipped = 0;
+
+//        if (params.length == 0 || !(params[0] instanceof String secretBits)) {
+//            // TODO: ADD NEW EXCEPTION TYPE TO HANDLE THIS SITUATIONS
+//            throw new ClassCastException();
+//        }
+
 
         for (int i = 0; i < secretBits.length(); i++) {
                 Gene targetGene = (Gene) genes.get(i);

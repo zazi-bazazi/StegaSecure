@@ -3,48 +3,50 @@ package org.example.model.ga;
 import org.example.model.ga.abstractClasses.AbstractChromosome;
 import org.example.model.ga.abstractClasses.AbstractPopulation;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Population extends AbstractPopulation {
-    private final Map<AbstractChromosome, List<AbstractChromosome>> adjList;
+    private final Map<AbstractChromosome<?>, List<AbstractChromosome<?>>> adjList;
 
     public Population() {
         this.adjList = new HashMap<>();
     }
 
     @Override
-    public void addChromosome(AbstractChromosome chromosome) {
+    public void addChromosome(AbstractChromosome<?> chromosome) {
         this.adjList.putIfAbsent(chromosome, new ArrayList<>());
     }
 
     @Override
-    public void addEdge(AbstractChromosome c1, AbstractChromosome c2) {
+    public void addEdge(AbstractChromosome<?> c1, AbstractChromosome<?> c2) {
         this.adjList.get(c1).add(c2);
         this.adjList.get(c2).add(c1);
     }
 
     @Override
-    public List<AbstractChromosome> getNeighbors(AbstractChromosome chromosome) {
+    public ArrayList<AbstractChromosome<?>> getChromosomes() {
+        return new ArrayList<>(this.adjList.keySet());
+    }
+
+    @Override
+    public List<AbstractChromosome<?>> getNeighbors(AbstractChromosome<?> chromosome) {
         return this.adjList.getOrDefault(chromosome, new ArrayList<>());
     }
 
     @Override
-    public void replaceNode(AbstractChromosome oldNode, AbstractChromosome newNode) {
+    public void replaceNode(AbstractChromosome<?> oldNode, AbstractChromosome<?> newNode) {
         if (!this.adjList.containsKey(oldNode)) return;
 
         // Get the neighbors of the old parent
-        List<AbstractChromosome> neighbors = this.adjList.get(oldNode);
+        List<AbstractChromosome<?>> neighbors = this.adjList.get(oldNode);
 
         // Remove the old parent and add the new child
         this.adjList.remove(oldNode);
         this.adjList.put(newNode, neighbors);
 
         // Update the neighbors to point to the new child instead of the old parent
-        for (AbstractChromosome neighbor : neighbors) {
-            List<AbstractChromosome> neighborList = this.adjList.get(neighbor);
+        for (AbstractChromosome<?> neighbor : neighbors) {
+            List<AbstractChromosome<?>> neighborList = this.adjList.get(neighbor);
             neighborList.remove(oldNode);
             neighborList.add(newNode);
         }

@@ -7,7 +7,7 @@ public class Gene extends AbstractGene<Integer> {
     private static final int COEFF_MIN = 10;
     private static final int COEFF_MAX = 50;
 
-    private final int blockIndex;
+    private int blockIndex;
 
 
     public Gene(Integer value, Object... params) {
@@ -17,6 +17,10 @@ public class Gene extends AbstractGene<Integer> {
 
     public int getBlockIndex() {
         return this.blockIndex;
+    }
+
+    public void setBlockIndex(int blockIndex) {
+        this.blockIndex = blockIndex;
     }
 
     public int getCoefficientIndex() {
@@ -40,8 +44,8 @@ public class Gene extends AbstractGene<Integer> {
         return "(" + this.blockIndex + "," + this.value + ")";
     }
 
-    public static AbstractChromosome buildMidFrequencyPool(int totalBlocks) {
-        AbstractChromosome pool = new Chromosome();
+    public static AbstractChromosome<?> buildMidFrequencyPool(int totalBlocks) {
+        AbstractChromosome<?> pool = new Chromosome();
         for (int block = 0; block < totalBlocks; block++) {
             for (int coeff = COEFF_MIN; coeff <= COEFF_MAX; coeff++) {
                 pool.addGene(new Gene(block, coeff));

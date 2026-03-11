@@ -6,8 +6,12 @@ import org.example.model.ga.abstractClasses.AbstractGene;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Random;
 
 public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
+    private final Random random = new Random();
+
+
     public Chromosome() {
         this.chromosomeGenes = new ArrayList<>();
     }
@@ -70,19 +74,14 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
 
         for (int i = 0; i < L; i++) {
 
-            //formula: Pos(i) = (i * step) mod N
             int pos = (i * NL) % N;
 
-            // המרה של המיקום הגלובלי חזרה לבלוק ומקדם ספציפי
             int blockIndex = pos / usableCoefficientsPerBlock;
-
-            // שארית החלוקה נותנת את המיקום בתוך הבלוק, נוסיף 6 כדי לפגוע בטווח תדרי הביניים בזיג-זג
             int coeffIndex = 6 + (pos % usableCoefficientsPerBlock);
 
             generatedGenes.add(new Gene(blockIndex, coeffIndex));
         }
 
-        // 4. בנייה והחזרה של הכרומוזום
         Chromosome newChromo = new Chromosome();
         for(AbstractGene<?> gene : generatedGenes) {
             newChromo.addGene(gene);
@@ -91,25 +90,40 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
         return newChromo;
     }
 
-    public void crossover(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2) {
-        AbstractChromosome<?> chroResult = chro1.createEmpty();
+    @Override
+    public void crossover(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2, Object... params) {
         for(int i = 0; i < chro1.getNumGenes(); i++) {
             if (Math.random() < 0.5) {
-                chroResult.addGene(chro1.getGeneByIndex(i));
+                this.addGene(chro1.getGeneByIndex(i));
             } else {
-                chroResult.addGene(chro2.getGeneByIndex(i));
+                this.addGene(chro2.getGeneByIndex(i));
             }
         }
     }
 
     @Override
-    public void tourmentSelection(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2) {
+    public void tourmentSelection(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2, Object... params) {
 
     }
 
     @Override
-    public void mutate(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2) {
+    public void mutate(Object... params) {
+        int totalBlocks = (int) params[0];
+        double mutationRate = (double) params[1];
+        for (int i = 0; i < this.getNumGenes(); i++) {
 
+            Gene currentGene = (Gene) this.getGeneByIndex(i);
+
+            if (random.nextDouble() < mutationRate) {
+                int newCoeff = 1 + random.nextInt(64);
+                currentGene.setValue(newCoeff);
+            }
+
+            if (random.nextDouble() < mutationRate) {
+                int newBlock = random.nextInt(totalBlocks);
+                currentGene.setBlockIndex(newBlock);
+            }
+        }
     }
 }
 

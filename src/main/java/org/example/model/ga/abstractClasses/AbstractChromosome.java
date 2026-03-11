@@ -18,8 +18,8 @@ public abstract class AbstractChromosome<T extends Collection<AbstractGene<?>>> 
     public abstract AbstractChromosome<T> generateChromosomeMath(Object... params);
 
     //Algorithm implementation
-    public abstract void crossover(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2);
-    public abstract void tourmentSelection(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2);
-    public abstract void mutate(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2);
+    public abstract void crossover(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2, Object... params);
+    public abstract void tourmentSelection(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2, Object... params);
+    public abstract void mutate(Object... params);
 
 }

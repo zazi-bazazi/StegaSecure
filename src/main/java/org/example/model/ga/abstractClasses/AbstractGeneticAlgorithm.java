@@ -28,25 +28,21 @@ public abstract class AbstractGeneticAlgorithm{
         initializePopulation(emptyPop, emptyChro);
         runGeneration();
 
-        // 2. The Evolution Loop (Now safely hidden inside the GA)
         for (int generation = 0; generation < this.maxGenerations; generation++) {
 
-            // Run one step of evolution
-            nextGeneration();
+            for (int i = 0; i < this.populationSize; i++) {
+                nextGeneration();
+            }
 
-            // Find the best chromosome currently in the graph
             AbstractChromosome<?> currentBest = getBestChromosome();
 
-            // 3. The Dynamic Stop Check
-            // Ask the Engine's predicate: "Is this chromosome good enough to stop?"
             if (stoppingCondition.test(currentBest)) {
                 System.out.println("Evolution finished early at generation: " + generation);
                 break;
             }
         }
 
-        // Return the ultimate winner back to the Engine
-        return getBestChromosome();
+        return this.getBestChromosome();
     }
 
     // Helper method to scan your adjList and find the highest score

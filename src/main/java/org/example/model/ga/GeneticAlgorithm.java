@@ -46,7 +46,13 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         }
 
         for(int i = 0; i < this.populationSize; i++) {
-            this.population.addEdge(this.population.getChromosomes().get(i), this.population.getChromosomes().get((i + 1) % this.populationSize));
+            AbstractChromosome<?> current = this.population.getChromosomes().get(i);
+
+            AbstractChromosome<?> neighborRight1 = this.population.getChromosomes().get((i + 1) % this.populationSize);
+            this.population.addEdge(current, neighborRight1);
+
+            AbstractChromosome<?> neighborRight2 = this.population.getChromosomes().get((i + 2) % this.populationSize);
+            this.population.addEdge(current, neighborRight2);
         }
     }
 
@@ -77,7 +83,7 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
     @Override
     protected AbstractChromosome<?> crossover(AbstractChromosome<?> chromosome1, AbstractChromosome<?> chromosome2, Object... params) {
         AbstractChromosome<?> newChro = chromosome1.createEmpty();
-        newChro.crossover(chromosome1, chromosome2);
+        newChro.crossover(chromosome1, chromosome2, this.totalBlocks);
         return newChro;
     }
 
@@ -91,6 +97,9 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
     @Override
     protected AbstractChromosome<?> select(AbstractChromosome<?> chro, Object... params) {
         List<AbstractChromosome<?>> neighbors = this.population.getNeighbors(chro);
+
+        while (this.population.getNeighbors(chro) != this.population.getChromosomes().get(random.nextInt(this.populationSize))) )
+
 
         if (neighbors == null || neighbors.isEmpty()) {
             return chro;

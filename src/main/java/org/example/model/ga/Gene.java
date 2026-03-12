@@ -15,6 +15,10 @@ public class Gene extends AbstractGene<Integer> {
         this.blockIndex = (int) params[0];
     }
 
+    public Gene(AbstractGene<?> other) {
+        this(((Gene) other).getBlockIndex(), (Integer) other.getValue());
+    }
+
     public int getBlockIndex() {
         return this.blockIndex;
     }

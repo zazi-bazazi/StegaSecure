@@ -93,10 +93,26 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
     @Override
     public void crossover(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2, Object... params) {
         for(int i = 0; i < chro1.getNumGenes(); i++) {
-            if (Math.random() < 0.5) {
-                this.addGene(chro1.getGeneByIndex(i));
-            } else {
-                this.addGene(chro2.getGeneByIndex(i));
+            Gene copy1 = new Gene(chro1.getGeneByIndex(i));
+            Gene copy2 = new Gene(chro2.getGeneByIndex(i));
+
+            Gene chosenGene = (Math.random() < 0.5) ? copy1 : copy2;
+            Gene backupGene = (chosenGene == copy1) ? copy2 : copy1;
+
+            if (!this.getGenes().contains(chosenGene)) {
+                this.addGene(chosenGene);
+            }
+            else if (!this.getGenes().contains(backupGene)) {
+                this.addGene(backupGene);
+            }
+            else {
+                int totalBlocks = (int) params[0];
+                Gene emergencyGene = new Gene(random.nextInt(totalBlocks), 1 + random.nextInt(62));
+
+                while(this.getGenes().contains(emergencyGene)) {
+                    emergencyGene = new Gene(random.nextInt(totalBlocks), 1 + random.nextInt(62));
+                }
+                this.addGene(emergencyGene);
             }
         }
     }
@@ -115,7 +131,7 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
             Gene currentGene = (Gene) this.getGeneByIndex(i);
 
             if (random.nextDouble() < mutationRate) {
-                int newCoeff = 1 + random.nextInt(64);
+                int newCoeff = 1 + random.nextInt(62);
                 currentGene.setValue(newCoeff);
             }
 

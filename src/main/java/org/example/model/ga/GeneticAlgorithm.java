@@ -44,9 +44,11 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
             AbstractChromosome<?> newChromo = emptyChro.generateChromosomeMath(params);
             this.population.addChromosome(newChromo);
         }
+
+        for(int i = 0; i < this.populationSize; i++) {
+            this.population.addEdge(this.population.getChromosomes().get(i), this.population.getChromosomes().get((i + 1) % this.populationSize));
+        }
     }
-
-
 
     @Override
     public void nextGeneration(Object... params) {
@@ -84,6 +86,8 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         chromosome.mutate(this.totalBlocks, this.mutationRate);
     }
 
+
+    // Tourment selection:
     @Override
     protected AbstractChromosome<?> select(AbstractChromosome<?> chro, Object... params) {
         List<AbstractChromosome<?>> neighbors = this.population.getNeighbors(chro);

@@ -9,7 +9,7 @@ public class Population extends AbstractPopulation {
     private final Map<AbstractChromosome<?>, List<AbstractChromosome<?>>> adjList;
 
     public Population() {
-        this.adjList = new HashMap<>();
+        this.adjList = new LinkedHashMap<>();
     }
 
     @Override
@@ -38,17 +38,21 @@ public class Population extends AbstractPopulation {
         if (!this.adjList.containsKey(oldNode)) return;
 
         // Get the neighbors of the old parent
-        List<AbstractChromosome<?>> neighbors = this.adjList.get(oldNode);
+        List<AbstractChromosome<?>> neighbors = this.adjList.remove(oldNode);
 
         // Remove the old parent and add the new child
-        this.adjList.remove(oldNode);
         this.adjList.put(newNode, neighbors);
 
-        // Update the neighbors to point to the new child instead of the old parent
+        // 3. Update every neighbor's own list to point to newNode
         for (AbstractChromosome<?> neighbor : neighbors) {
-            List<AbstractChromosome<?>> neighborList = this.adjList.get(neighbor);
-            neighborList.remove(oldNode);
-            neighborList.add(newNode);
+            List<AbstractChromosome<?>> neighborsOfNeighbor = this.adjList.get(neighbor);
+            if (neighborsOfNeighbor != null) {
+                // Replace the old reference with the new one
+                if (!Collections.replaceAll(neighborsOfNeighbor, oldNode, newNode)) {
+                    // todo add new exception for this kind of error
+                    throw new IllegalStateException("Graph Integrity Error: Broken bidirectional edge detected. Neighbor did not contain the old node.");
+                }
+            }
         }
     }
 }

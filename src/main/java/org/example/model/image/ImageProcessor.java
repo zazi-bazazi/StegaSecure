@@ -121,7 +121,7 @@ public class ImageProcessor {
 
                     // Assuming you updated SpatialMatrix to handle the grayscale math under the
                     // hood!
-                    block[x][y] = image.getY(startX + x, startY + y);
+                    block[x][y] = image.getGrayscalePixel(startX + x, startY + y);
 
                 } else {
                     // Pad with 0 if we hit the edge of the image

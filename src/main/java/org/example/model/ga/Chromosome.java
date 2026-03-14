@@ -11,7 +11,6 @@ import java.util.Random;
 public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
     private final Random random = new Random();
 
-
     public Chromosome() {
         this.chromosomeGenes = new ArrayList<>();
     }
@@ -32,7 +31,7 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
     }
 
     @Override
-    public int compareTo(AbstractChromosome o) {
+    public int compareTo(AbstractChromosome<?> o) {
         return Double.compare(this.fitnessScore, o.getFitnessScore());
     }
 
@@ -43,6 +42,11 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
 
     @Override
     public AbstractChromosome<ArrayList<AbstractGene<?>>> generateChromosomeRand(Object... params) {
+        if (params.length != 2) {
+            // TODO make a custom Exception for this state
+            throw new IllegalStateException("MISSING PARAMS");
+        }
+
         int totalBlocks = (int) params[0];
         int messageLength = (int) params[1];
 
@@ -50,9 +54,9 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
 
         while (uniqueGenes.size() < messageLength) {
             int randomBlock = (int) (Math.random() * totalBlocks);
-            int randomCoeff = 6 + (int) (Math.random() * 20); // Targeting mid-frequencies
+            int randomCoeff = 1 + (int) (Math.random() * 15); // AC indices 1-15 (survive quantization)
 
-            uniqueGenes.add(new Gene(randomBlock, randomCoeff));
+            uniqueGenes.add(new Gene(randomCoeff, randomBlock));
         }
         Chromosome newChromo = new Chromosome();
         newChromo.chromosomeGenes.addAll(uniqueGenes);
@@ -62,10 +66,15 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
 
     @Override
     public AbstractChromosome<ArrayList<AbstractGene<?>>> generateChromosomeMath(Object... params) {
-        int totalBlocks = (int) params[0];
-        int L = (int) params[1];
+        if (params.length != 2) {
+            // TODO make a custom Exception for this state
+            throw new IllegalStateException("MISSING PARAMS");
+        }
 
-        final int usableCoefficientsPerBlock = 20;
+        int totalBlocks = (int) params[0];
+        int L = (int) params[1]; // messageLength
+
+        final int usableCoefficientsPerBlock = 15;
         final int N = totalBlocks * usableCoefficientsPerBlock;
 
         final int NL = (int) Math.floor((double) N / L);
@@ -77,13 +86,13 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
             int pos = (i * NL) % N;
 
             int blockIndex = pos / usableCoefficientsPerBlock;
-            int coeffIndex = 6 + (pos % usableCoefficientsPerBlock);
+            int coeffIndex = 1 + (pos % usableCoefficientsPerBlock);
 
-            generatedGenes.add(new Gene(blockIndex, coeffIndex));
+            generatedGenes.add(new Gene(coeffIndex, blockIndex));
         }
 
         Chromosome newChromo = new Chromosome();
-        for(AbstractGene<?> gene : generatedGenes) {
+        for (AbstractGene<?> gene : generatedGenes) {
             newChromo.addGene(gene);
         }
 
@@ -92,7 +101,7 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
 
     @Override
     public void crossover(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2, Object... params) {
-        for(int i = 0; i < chro1.getNumGenes(); i++) {
+        for (int i = 0; i < chro1.getNumGenes(); i++) {
             Gene copy1 = new Gene(chro1.getGeneByIndex(i));
             Gene copy2 = new Gene(chro2.getGeneByIndex(i));
 
@@ -101,16 +110,14 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
 
             if (!this.getGenes().contains(chosenGene)) {
                 this.addGene(chosenGene);
-            }
-            else if (!this.getGenes().contains(backupGene)) {
+            } else if (!this.getGenes().contains(backupGene)) {
                 this.addGene(backupGene);
-            }
-            else {
+            } else {
                 int totalBlocks = (int) params[0];
-                Gene emergencyGene = new Gene(random.nextInt(totalBlocks), 1 + random.nextInt(62));
+                Gene emergencyGene = new Gene(1 + random.nextInt(15), random.nextInt(totalBlocks));
 
-                while(this.getGenes().contains(emergencyGene)) {
-                    emergencyGene = new Gene(random.nextInt(totalBlocks), 1 + random.nextInt(62));
+                while (this.getGenes().contains(emergencyGene)) {
+                    emergencyGene = new Gene(1 + random.nextInt(15), random.nextInt(totalBlocks));
                 }
                 this.addGene(emergencyGene);
             }
@@ -126,20 +133,35 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
     public void mutate(Object... params) {
         int totalBlocks = (int) params[0];
         double mutationRate = (double) params[1];
-        for (int i = 0; i < this.getNumGenes(); i++) {
 
+        for (int i = 0; i < this.getNumGenes(); i++) {
             Gene currentGene = (Gene) this.getGeneByIndex(i);
 
-            if (random.nextDouble() < mutationRate) {
-                int newCoeff = 1 + random.nextInt(62);
-                currentGene.setValue(newCoeff);
-            }
+            if (random.nextDouble() >= mutationRate)
+                continue;
 
-            if (random.nextDouble() < mutationRate) {
+            Gene candidate;
+            int attempts = 0;
+            do {
                 int newBlock = random.nextInt(totalBlocks);
-                currentGene.setBlockIndex(newBlock);
-            }
+                int newCoeff = 1 + random.nextInt(15);
+                candidate = new Gene(newCoeff, newBlock);
+                attempts++;
+
+                if (attempts > 50) {
+                    candidate = currentGene;
+                    break;
+                }
+            } while (this.getGenes().contains(candidate));
+
+            currentGene.setBlockIndex(candidate.getBlockIndex());
+            currentGene.setValue(candidate.getCoefficientIndex());
         }
     }
-}
 
+    @Override
+    public String toString() {
+        return "Chromosome{genes=" + chromosomeGenes.size() + ", fitness=" + String.format("%.4f", fitnessScore)
+                + " Gene= " + this.chromosomeGenes + "}";
+    }
+}

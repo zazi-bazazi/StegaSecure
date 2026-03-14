@@ -3,6 +3,8 @@ package org.example.model.ga;
 import org.example.model.ga.abstractClasses.AbstractChromosome;
 import org.example.model.ga.abstractClasses.AbstractGene;
 
+import java.util.Objects;
+
 public class Gene extends AbstractGene<Integer> {
     private static final int COEFF_MIN = 10;
     private static final int COEFF_MAX = 50;
@@ -16,7 +18,7 @@ public class Gene extends AbstractGene<Integer> {
     }
 
     public Gene(AbstractGene<?> other) {
-        this(((Gene) other).getBlockIndex(), (Integer) other.getValue());
+        this((Integer) other.getValue(), ((Gene) other).getBlockIndex());
     }
 
     public int getBlockIndex() {
@@ -35,7 +37,7 @@ public class Gene extends AbstractGene<Integer> {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Gene gene)) return false;
-        return blockIndex == gene.blockIndex && this.value == gene.value;
+        return blockIndex == gene.blockIndex && Objects.equals(this.value, gene.value);
     }
 
     @Override
@@ -52,7 +54,7 @@ public class Gene extends AbstractGene<Integer> {
         AbstractChromosome<?> pool = new Chromosome();
         for (int block = 0; block < totalBlocks; block++) {
             for (int coeff = COEFF_MIN; coeff <= COEFF_MAX; coeff++) {
-                pool.addGene(new Gene(block, coeff));
+                pool.addGene(new Gene(coeff, block));
             }
         }
         return pool;

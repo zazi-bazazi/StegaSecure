@@ -5,13 +5,12 @@ import org.example.model.ga.Gene;
 import org.example.model.ga.GeneticAlgorithm;
 import org.example.model.ga.Population;
 import org.example.model.ga.abstractClasses.AbstractChromosome;
-import org.example.model.ga.abstractClasses.AbstractGene;
 import org.example.model.ga.abstractClasses.FitnessFunction;
 import org.example.model.image.ImageProcessor;
 import org.example.model.image.SparseDCTMatrix;
 import org.example.model.image.SpatialMatrix;
 
-import java.util.ArrayList;
+import java.io.*;
 import java.util.function.Predicate;
 
 public class Engine {
@@ -24,10 +23,15 @@ public class Engine {
     private static final double MINIMAL_QUALITY = 35.0;
     private static final double PENALTY = 2.0;
 
+    private record EmbeddedResult(SparseDCTMatrix matrix, int skipped) {
+    }
+
     private Engine() {
     }
 
-    private void setGeneticAlgorithm(GeneticAlgorithm ga) {this.ga = ga;}
+    private void setGeneticAlgorithm(GeneticAlgorithm ga) {
+        this.ga = ga;
+    }
 
     public static synchronized Engine getInstance() {
         if (instance == null) {
@@ -35,7 +39,8 @@ public class Engine {
         }
         return instance;
     }
-    public void GeneticAlgorithmManager(String secretBits, int totalBlocks) {
+
+    public AbstractChromosome<?> geneticAlgorithmManager(String secretBits, int totalBlocks) {
         Population emptyPop = new Population();
         AbstractChromosome<?> emptyChro = new Chromosome();
 
@@ -43,75 +48,311 @@ public class Engine {
 
         Predicate<AbstractChromosome<?>> stopEarly = (chromosome) -> chromosome.getFitnessScore() >= 60.0;
 
-
         GeneticAlgorithm ga = new GeneticAlgorithm(evaluator, totalBlocks, secretBits.length());
         setGeneticAlgorithm(ga);
 
-//        ga.initializePopulation(emptyPop, emptyChro);
-//
-//        ga.runGeneration();
+        // ga.initializePopulation(emptyPop, emptyChro);
+        //
+        // ga.runGeneration();
         AbstractChromosome<?> finalChro = (Chromosome) ga.evolve(emptyPop, emptyChro, stopEarly);
 
         System.out.println("Finished! Best PSNR: " + finalChro.getFitnessScore());
+        System.out.println("Chromosome: " + finalChro);
+
+        return finalChro;
     }
 
-    private double evaluateFitness(AbstractChromosome<?> chromosome, String secretBits) {
+    private EmbeddedResult implementChromosomeToImage(String secretBits, AbstractChromosome<?> chromosome) {
         SparseDCTMatrix tempDCT = new SparseDCTMatrix(this.frequencyDomain);
-        ArrayList<AbstractGene<?>> genes = ((Chromosome) chromosome).getGenes();
 
-        int embedded = 0;
         int skipped = 0;
 
-//        if (params.length == 0 || !(params[0] instanceof String secretBits)) {
-//            // TODO: ADD NEW EXCEPTION TYPE TO HANDLE THIS SITUATIONS
-//            throw new ClassCastException();
-//        }
+        for (int i = 0, bitIndex = 0; i < secretBits.length(); i++) {
+            if (i >= chromosome.getNumGenes()) {
+                skipped = secretBits.length() - bitIndex;
+                break;
+            }
 
-
-        for (int i = 0; i < secretBits.length(); i++) {
-                Gene targetGene = (Gene) genes.get(i);
+            Gene targetGene = (Gene) chromosome.getGeneByIndex(i);
 
             double original = tempDCT.getCoefficient(
                     targetGene.getBlockIndex(),
-                    targetGene.getCoefficientIndex()
-            );
+                    targetGene.getCoefficientIndex());
 
             if (Math.abs(original) < 1.0) {
                 skipped++;
                 continue;
             }
 
-            char secretBit = secretBits.charAt(i);
-            double modified = ParityModifier(original, secretBit);
+            // Use bitIndex (not i) so that skipped genes don't shift which bit we embed
+            char secretBit = secretBits.charAt(bitIndex);
+            double modified = parityModifier(original, secretBit);
             tempDCT.setCoefficient(
                     targetGene.getBlockIndex(),
                     targetGene.getCoefficientIndex(),
-                    modified
-            );
-            embedded++;
+                    modified);
+
+            bitIndex++;
         }
 
-        SpatialMatrix stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(tempDCT);
+        // Return both variables packaged perfectly together!
+        return new EmbeddedResult(tempDCT, skipped);
+    }
+
+    private double evaluateFitness(AbstractChromosome<?> chromosome, String secretBits) {
+        // Embed bits into a temporary copy of the frequency domain
+        EmbeddedResult result = implementChromosomeToImage(secretBits, chromosome);
+        int skipped = result.skipped();
+
+        // Convert the modified frequency domain back to a spatial image
+        SpatialMatrix stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(result.matrix());
+
+        // Calculate the true spatial-domain PSNR against the original cover image
         double psnrScore = ImageMetrics.calculatePSNR(this.spatialDomain, stegoImage);
 
-        if (psnrScore < MINIMAL_QUALITY) psnrScore = psnrScore / PENALTY;
-        psnrScore -= skipped * PENALTY;
-        chromosome.setFitnessScore(psnrScore);
+        // Penalise any chromosome that couldn't embed all bits
+        if (skipped > 0) psnrScore /= PENALTY;
 
+        chromosome.setFitnessScore(psnrScore);
         return psnrScore;
     }
 
-    private double ParityModifier(double coefficient, char bit) {
-        int intCoef = (int)Math.round(coefficient);
+//    private double evaluateFitness(AbstractChromosome<?> chromosome, String secretBits) {
+//        double dctSSE = 0.0;
+//        int skipped = 0;
+//
+//        for (int i = 0, bitIndex = 0; bitIndex < secretBits.length() && i < chromosome.getNumGenes(); i++) {
+//            Gene gene = (Gene) chromosome.getGeneByIndex(i);
+//            double original = this.frequencyDomain.getCoefficient(
+//                    gene.getBlockIndex(), gene.getCoefficientIndex());
+//
+//            if (Math.abs(original) < 1.0) {
+//                skipped++;
+//                continue;
+//            }
+//
+//            double modified = parityModifier(original, secretBits.charAt(bitIndex));
+//            double delta = modified - original; // Will be 0 or ±1
+//            dctSSE += delta * delta; // ΔF² — no IDCT needed at all!
+//            bitIndex++;
+//        }
+//
+//        // Parseval: pixel-domain MSE = dctSSE / totalPixels
+//        int totalPixels = this.frequencyDomain.getWidth() * this.frequencyDomain.getHeight();
+//        double mse = dctSSE / totalPixels;
+//
+//        double psnrScore;
+//        if (mse == 0.0 && skipped == 0) {
+//            // True perfection: all bits embedded with zero distortion (parity already matched)
+//            psnrScore = Double.MAX_VALUE;
+//        } else if (mse == 0.0){
+//            // No distortion recorded, but bits were dropped — heavily penalise by skipped count
+//            psnrScore = Math.max(0, MINIMAL_QUALITY - (skipped * PENALTY));
+//        } else {
+//            psnrScore = 20.0 * Math.log10(255.0 / Math.sqrt(mse));
+//            if (psnrScore < MINIMAL_QUALITY || skipped > 0)
+//                psnrScore /= PENALTY;
+//        }
+//
+//        chromosome.setFitnessScore(psnrScore);
+//        return psnrScore;
+//    }
+
+
+        private double parityModifier(double coefficient, char bit) {
+        int intCoef = (int) Math.round(coefficient);
         if ((intCoef & 1) == bit - '0') {
-            return (double)intCoef;
+            return (double) intCoef;
         }
         if (intCoef >= 0) {
-            return (intCoef % 2 == 0) ? (double)(intCoef + 1) : (double)(intCoef - 1);
+            return (intCoef % 2 == 0) ? (double) (intCoef + 1) : (double) (intCoef - 1);
         } else {
             // For negative: -4 → LSB of abs value, adjust carefully
-            return (intCoef % 2 == 0) ? (double)(intCoef - 1) : (double)(intCoef + 1);
+            return (intCoef % 2 == 0) ? (double) (intCoef - 1) : (double) (intCoef + 1);
         }
+    }
+
+    public void loadCoverImage(SpatialMatrix spatial, SparseDCTMatrix frequency) {
+        this.spatialDomain = spatial;
+        this.frequencyDomain = frequency;
+    }
+
+    public static String textToBinaryString(String text) {
+        StringBuilder binary = new StringBuilder();
+
+        // Prepend 32-bit length header (number of characters, not bits)
+        String lengthHeader = String.format("%32s", Integer.toBinaryString(text.length())).replace(' ', '0');
+        binary.append(lengthHeader);
+
+        for (char c : text.toCharArray()) {
+            binary.append(String.format("%8s", Integer.toBinaryString(c)).replace(' ', '0'));
+        }
+        return binary.toString();
+    }
+
+    private static String binaryStringToText(String bits) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i + 8 <= bits.length(); i += 8) {
+            int charCode = Integer.parseInt(bits.substring(i, i + 8), 2);
+            text.append((char) charCode);
+        }
+        return text.toString();
+    }
+
+    public String decode(String stegoImagePath, AbstractChromosome<?> chromosome) {
+        try {
+            // 1. Load the stego image and convert to the frequency domain
+            SpatialMatrix stegoImage = new SpatialMatrix(stegoImagePath);
+            SparseDCTMatrix stegoFrequency = ImageProcessor.getInstance().convertToFrequencyDomain(stegoImage);
+
+            StringBuilder extractedBits = new StringBuilder();
+
+            // 2. Read bits from every gene position the chromosome points to
+            // (same order used during encoding)
+            for (int i = 0; i < chromosome.getNumGenes(); i++) {
+                Gene gene = (Gene) chromosome.getGeneByIndex(i);
+                double coeff = stegoFrequency.getCoefficient(
+                        gene.getBlockIndex(),
+                        gene.getCoefficientIndex());
+
+                // Skip weak coefficients — they were skipped during encoding too
+                if (Math.abs(coeff) < 1.0)
+                    continue;
+
+                // Extract the LSB of the rounded coefficient
+                int intCoef = (int) Math.round(coeff);
+                int lsb = Math.abs(intCoef) & 1;
+                extractedBits.append(lsb);
+            }
+
+            String allBits = extractedBits.toString();
+
+            // 3. Read the 32-bit length header to know how many characters to recover
+            if (allBits.length() < 32) {
+                return "[DECODE ERROR] Not enough bits extracted to read the length header.";
+            }
+            int charCount = Integer.parseInt(allBits.substring(0, 32), 2);
+            int bitsNeeded = 32 + (charCount * 8);
+
+            if (allBits.length() < bitsNeeded) {
+                return "[DECODE ERROR] Stego image does not contain enough embedded bits. " +
+                        "Expected " + bitsNeeded + " but got " + allBits.length() + ".";
+            }
+
+            // 4. Skip the header, decode the payload
+            String payloadBits = allBits.substring(32, bitsNeeded);
+            String recoveredText = binaryStringToText(payloadBits);
+
+            System.out.println("[SUCCESS] Decoded " + charCount + " character(s): " + recoveredText);
+            return recoveredText;
+
+        } catch (Exception e) {
+            System.err.println("[DECODE ERROR] Failed to decode the stego image.");
+            e.printStackTrace();
+            return "[DECODE ERROR] " + e.getMessage();
+        }
+    }
+
+    public void encode(String secretText, String inputImagePath, String outputPath) throws Exception {
+        String secretBits = textToBinaryString(secretText);
+        System.out.println("\n[INFO] Bits to hide: " + secretBits.length() + " bits.");
+
+        System.out.println("[INFO] Loading image and converting to Frequency Domain...");
+        SpatialMatrix spatialImage = new SpatialMatrix(inputImagePath);
+        SparseDCTMatrix frequencyImage = ImageProcessor.getInstance().convertToFrequencyDomain(spatialImage);
+
+        int totalBlocks = (int) Math.ceil(spatialImage.getWidth() / 8.0)
+                * (int) Math.ceil(spatialImage.getHeight() / 8.0);
+        System.out.println("[INFO] Image loaded! Total 8x8 blocks: " + totalBlocks);
+
+        this.loadCoverImage(spatialImage, frequencyImage);
+
+        System.out.println("\n[INFO] Starting Genetic Algorithm Evolution...");
+        AbstractChromosome<?> winningChromosome = geneticAlgorithmManager(secretBits, totalBlocks);
+
+        buildAndSaveStegoImage(winningChromosome, secretBits, outputPath);
+    }
+
+    public void buildAndSaveStegoImage(AbstractChromosome<?> bestChromosome, String secretBits, String outputPath) {
+        System.out.println("\n[INFO] Generating final Master Matrix...");
+
+        EmbeddedResult result = this.implementChromosomeToImage(secretBits, bestChromosome);
+
+        SparseDCTMatrix finalDCT = result.matrix();
+        int skipped = result.skipped();
+
+        if (skipped > 0) {
+            System.out.println(
+                    "[WARNING] The best chromosome still hit " + skipped + " zeroes. Message might be corrupted.");
+        } else {
+            System.out.println("[SUCCESS] All " + secretBits.length() + " bits locked perfectly into the frequencies!");
+        }
+
+        System.out.println("[INFO] Running Inverse DCT to rebuild spatial pixels...");
+        SpatialMatrix stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(finalDCT);
+
+        try {
+            // Save image — PNG is mandatory so JPEG recompression doesn't destroy the
+            // message.
+            // saveImage() returns the File it created so we can place the key file right
+            // next to it.
+            File imageFile = stegoImage.saveImage(outputPath, "png");
+
+            // Derive the key file name from the image file name (same stem, .key extension)
+            String keyFileName = imageFile.getName().replace(".png", ".key");
+            File keyFile = new File(imageFile.getParent(), keyFileName);
+            saveChromosomeKey(bestChromosome, keyFile);
+
+            System.out.println("\n==================================================");
+            System.out.println("  STEGO-IMAGE SAVED TO : " + imageFile.getAbsolutePath());
+            System.out.println("  KEY FILE SAVED TO    : " + keyFile.getAbsolutePath());
+            System.out.println("==================================================");
+        } catch (Exception e) {
+            System.err.println("[FATAL ERROR] Failed to save outputs to disk.");
+            e.printStackTrace();
+        }
+    }
+
+    public void saveChromosomeKey(AbstractChromosome<?> chromosome, File keyFile) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(keyFile))) {
+            writer.write("# StegaSecure Key File — do not edit");
+            writer.newLine();
+            writer.write("# Format: blockIndex,coefficientIndex (one gene per line)");
+            writer.newLine();
+
+            for (int i = 0; i < chromosome.getNumGenes(); i++) {
+                Gene gene = (Gene) chromosome.getGeneByIndex(i);
+                writer.write(gene.getBlockIndex() + "," + gene.getCoefficientIndex());
+                writer.newLine();
+            }
+        }
+        System.out.println(">>> Key file saved at: " + keyFile.getAbsolutePath());
+    }
+
+    public AbstractChromosome<?> loadChromosomeKey(File keyFile) throws IOException {
+        Chromosome chromosome = new Chromosome();
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(keyFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                // Skip comment lines
+                if (line.startsWith("#") || line.isBlank())
+                    continue;
+
+                String[] parts = line.split(",");
+                if (parts.length != 2) {
+                    throw new IOException("Malformed key file line: \"" + line + "\"");
+                }
+
+                int blockIndex = Integer.parseInt(parts[0].trim());
+                int coeffIndex = Integer.parseInt(parts[1].trim());
+                chromosome.addGene(new Gene(coeffIndex, blockIndex));
+            }
+        }
+
+        System.out.println(">>> Loaded chromosome key with " + chromosome.getNumGenes() + " genes from: "
+                + keyFile.getAbsolutePath());
+        return chromosome;
     }
 
 }

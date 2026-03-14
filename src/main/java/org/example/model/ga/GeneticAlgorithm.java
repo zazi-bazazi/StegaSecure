@@ -1,6 +1,7 @@
 package org.example.model.ga;
 
 import org.example.model.ga.abstractClasses.AbstractChromosome;
+import org.example.model.ga.abstractClasses.AbstractGene;
 import org.example.model.ga.abstractClasses.AbstractGeneticAlgorithm;
 import org.example.model.ga.abstractClasses.AbstractPopulation;
 import org.example.model.ga.abstractClasses.FitnessFunction;
@@ -18,14 +19,15 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
     private final int tournamentSize;
 
     public GeneticAlgorithm(FitnessFunction function, Object... params) {
-        super(function, 0.1, 10 ,100);
+        super(function, 0.1, 10, 200, 200);
         this.totalBlocks = (int) params[0];
-        this.messageLength = (int)params[1];
-        this.tournamentSize = 3;
+        this.messageLength = (int) params[1];
+        this.tournamentSize = 5;
     }
 
     @Override
     public void runGeneration() {
+        System.out.println("[INFO] Started " + (new Throwable()).getStackTrace()[0].getMethodName());
         for (AbstractChromosome<?> chromo : this.population.getChromosomes()) {
             chromo.setFitnessScore(this.fitness.evaluateFitness(chromo));
         }
@@ -33,55 +35,48 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
 
     @Override
     public void initializePopulation(AbstractPopulation emptyPop, AbstractChromosome<?> emptyChro, Object... params) {
+        System.out.println("[INFO] Started " + (new Throwable()).getStackTrace()[0].getMethodName());
         this.setPopulation(emptyPop);
 
-        for (int i = 0; i < this.populationSize / 2; i++) {
-            AbstractChromosome<?> newChromo = emptyChro.generateChromosomeRand(params);
+//        this.population.addChromosome(emptyChro.generateChromosomeMath(this.totalBlocks, this.messageLength));
+
+        for (int i = 0; i < this.populationSize; i++) {
+            AbstractChromosome<?> newChromo = emptyChro.generateChromosomeRand(this.totalBlocks, this.messageLength);
             this.population.addChromosome(newChromo);
         }
 
-        for (int i = 0; i < this.populationSize / 2; i++) {
-            AbstractChromosome<?> newChromo = emptyChro.generateChromosomeMath(params);
-            this.population.addChromosome(newChromo);
-        }
-
-        for(int i = 0; i < this.populationSize; i++) {
+        for (int i = 0; i < this.populationSize; i++) {
             AbstractChromosome<?> current = this.population.getChromosomes().get(i);
 
-            AbstractChromosome<?> neighborRight1 = this.population.getChromosomes().get((i + 1) % this.populationSize);
-            this.population.addEdge(current, neighborRight1);
-
-            AbstractChromosome<?> neighborRight2 = this.population.getChromosomes().get((i + 2) % this.populationSize);
-            this.population.addEdge(current, neighborRight2);
+            for (int step = 1; step <= 3; step++) {
+                AbstractChromosome<?> neighbor = this.population.getChromosomes().get((i + step) % this.populationSize);
+                this.population.addEdge(current, neighbor);
+            }
         }
     }
 
     @Override
     public void nextGeneration(Object... params) {
-        List<AbstractChromosome<?>> allNodes = new ArrayList<>(this.population.getChromosomes());
-        AbstractChromosome<?> parent1 = allNodes.get(random.nextInt(allNodes.size()));
+        AbstractChromosome<?> parent1 = select();
+        AbstractChromosome<?> parent2 = select();
 
-        // 2. Select Parent 2 using Local Tournament (e.g., tournament size of 3)
-        AbstractChromosome<?> parent2 = select(parent1);
+        do {
+            parent2 = select();
+        } while (parent2 == parent1);
 
-        // 3. Delegate Crossover to the Chromosome
         AbstractChromosome<?> child = this.crossover(parent1, parent2);
-
-        // 4. Delegate Mutation (Passing the required environment variable)
         this.mutate(child, this.totalBlocks, this.mutationRate);
 
-        // 5. Evaluate the new child's fitness
-         child.setFitnessScore(this.fitness.evaluateFitness(child));
+        child.setFitnessScore(this.fitness.evaluateFitness(child));
 
-        // 6. Replacement Strategy
-        // If the new child is better than Parent 1, it takes Parent 1's spot in the graph!
         if (child.compareTo(parent1) > 0) {
             this.population.replaceNode(parent1, child);
         }
     }
 
     @Override
-    protected AbstractChromosome<?> crossover(AbstractChromosome<?> chromosome1, AbstractChromosome<?> chromosome2, Object... params) {
+    protected AbstractChromosome<?> crossover(AbstractChromosome<?> chromosome1, AbstractChromosome<?> chromosome2,
+            Object... params) {
         AbstractChromosome<?> newChro = chromosome1.createEmpty();
         newChro.crossover(chromosome1, chromosome2, this.totalBlocks);
         return newChro;
@@ -92,28 +87,66 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         chromosome.mutate(this.totalBlocks, this.mutationRate);
     }
 
-
     // Tourment selection:
+    // @Override
+    // protected AbstractChromosome<?> select(Object... params) {
+    //
+    // List<AbstractChromosome<?>> allChromosomes =
+    // this.population.getChromosomes();
+    // List<AbstractChromosome<?>> family = this.population.getNeighbors(chro);
+    //
+    // AbstractChromosome<?> bestMate = null;
+    //
+    // for (int i = 0; i < this.tournamentSize; i++) {
+    // AbstractChromosome<?> candidate;
+    // do {
+    // candidate = allChromosomes.get(random.nextInt(allChromosomes.size()));
+    // } while (candidate == chro || family.contains(candidate));
+    //
+    // if (bestMate == null || candidate.getFitnessScore() >
+    // bestMate.getFitnessScore()) {
+    // bestMate = candidate;
+    // }
+    // }
+    //
+    // return bestMate;
+    // }
     @Override
-    protected AbstractChromosome<?> select(AbstractChromosome<?> chro, Object... params) {
-        List<AbstractChromosome<?>> neighbors = this.population.getNeighbors(chro);
+    protected AbstractChromosome<?> select(Object... params) {
+        List<AbstractChromosome<?>> allChromosomes = this.population.getChromosomes();
 
-        while (this.population.getNeighbors(chro) != this.population.getChromosomes().get(random.nextInt(this.populationSize))) )
+        AbstractChromosome<?> anchor = allChromosomes.get(random.nextInt(allChromosomes.size()));
 
+        List<AbstractChromosome<?>> neighborhood = new ArrayList<>(this.population.getNeighbors(anchor));
+        neighborhood.add(anchor);
 
-        if (neighbors == null || neighbors.isEmpty()) {
-            return chro;
-        }
-
-        AbstractChromosome<?> bestMate = null;
-
-        for (int i = 0; i < this.tournamentSize; i++) {
-            AbstractChromosome<?> randomNeighbor = neighbors.get(random.nextInt(neighbors.size()));
-
-            if (bestMate == null || randomNeighbor.getFitnessScore() > bestMate.getFitnessScore()) {
-                bestMate = randomNeighbor;
+        AbstractChromosome<?> best = null;
+        int k = Math.min(this.tournamentSize, neighborhood.size());
+        for (int i = 0; i < k; i++) {
+            AbstractChromosome<?> candidate = neighborhood.get(random.nextInt(neighborhood.size()));
+            if (best == null || candidate.getFitnessScore() > best.getFitnessScore()) {
+                best = candidate;
             }
         }
-        return bestMate;
+        return best;
     }
+
+//     @Override
+//     protected AbstractChromosome<?> select(Object... params) {
+//     List<AbstractChromosome<?>> allChromosomes =
+//     this.population.getChromosomes();
+//     AbstractChromosome<?> best = null;
+//
+//     // Pick k random individuals and find the best one
+//     for (int i = 0; i < this.tournamentSize; i++) {
+//     AbstractChromosome<?> candidate =
+//     allChromosomes.get(random.nextInt(allChromosomes.size()));
+//
+//     if (best == null || candidate.getFitnessScore() > best.getFitnessScore()) {
+//     best = candidate;
+//     }
+//     }
+//
+//     return best; // Return the winner to act as Parent 1 or Parent 2
+//     }
 }

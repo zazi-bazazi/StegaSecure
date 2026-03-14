@@ -4,18 +4,19 @@ import java.util.ArrayList;
 
 public class ImageProcessor {
 
-    private ImageProcessor() {}
+    private ImageProcessor() {
+    }
 
     // Packing LUT: Maps [u][v] to a 1D ZigZag Index (0-63)
     private static final int[][] ZIGZAG_INDEX = {
-            { 0,  1,  5,  6, 14, 15, 27, 28},
-            { 2,  4,  7, 13, 16, 26, 29, 42},
-            { 3,  8, 12, 17, 25, 30, 41, 43},
-            { 9, 11, 18, 24, 31, 40, 44, 53},
-            {10, 19, 23, 32, 39, 45, 52, 54},
-            {20, 22, 33, 38, 46, 51, 55, 60},
-            {21, 34, 37, 47, 50, 56, 59, 61},
-            {35, 36, 48, 49, 57, 58, 62, 63}
+            { 0, 1, 5, 6, 14, 15, 27, 28 },
+            { 2, 4, 7, 13, 16, 26, 29, 42 },
+            { 3, 8, 12, 17, 25, 30, 41, 43 },
+            { 9, 11, 18, 24, 31, 40, 44, 53 },
+            { 10, 19, 23, 32, 39, 45, 52, 54 },
+            { 20, 22, 33, 38, 46, 51, 55, 60 },
+            { 21, 34, 37, 47, 50, 56, 59, 61 },
+            { 35, 36, 48, 49, 57, 58, 62, 63 }
     };
 
     // Unpacking LUTs: Maps a 1D ZigZag Index (0-63) back to u and v coordinates
@@ -47,16 +48,16 @@ public class ImageProcessor {
         int blocksY = (int) Math.ceil(image.getHeight() / 8.0);
         int totalBlocks = blocksX * blocksY;
 
-        SparseDCTMatrix sparseMatrix = new SparseDCTMatrix(image.getWidth() , image.getHeight());
+        SparseDCTMatrix sparseMatrix = new SparseDCTMatrix(image.getWidth(), image.getHeight());
         int blockIndex = 0;
 
         // Loop through the blocks
-        for (int blockX = 0; blockX < blocksX; blockX++) {
-            for (int blockY = 0; blockY < blocksY; blockY++) {
+        for (int X = 0; X < blocksX; X++) {
+            for (int Y = 0; Y < blocksY; Y++) {
 
                 // Calculate the actual starting pixel coordinates for this block (jump by 8)
-                int startPixelX = blockX * 8;
-                int startPixelY = blockY * 8;
+                int startPixelX = X * 8;
+                int startPixelY = Y * 8;
 
                 // 1. Extract a single 8x8 block from the spatial image
                 double[][] spatialBlock = extractBlock(image, startPixelX, startPixelY);
@@ -64,8 +65,10 @@ public class ImageProcessor {
                 // 2. Do the math
                 double[][] frequencyBlock = DCTMath.calculateDCT(spatialBlock);
 
+                double[][] quantizedBlock = DCTMath.quantize(frequencyBlock);
+
                 // 3. Save the results into your SparseMatrix
-                saveBlockToSparseMatrix(sparseMatrix, frequencyBlock, blockIndex);
+                saveBlockToSparseMatrix(sparseMatrix, quantizedBlock, blockIndex);
 
                 blockIndex++;
             }
@@ -82,8 +85,9 @@ public class ImageProcessor {
         int blockIndex = 0;
 
         for (int blockX = 0; blockX < blocksX; blockX++) {
-            for(int blockY = 0; blockY < blocksY; blockY++) {
-                double[][] frequencyBlock = unpackBlock(frequencyMatrix, blockIndex);
+            for (int blockY = 0; blockY < blocksY; blockY++) {
+                double[][] quantizedBlock = unpackBlock(frequencyMatrix, blockIndex);
+                double[][] frequencyBlock = DCTMath.dequantize(quantizedBlock);
                 double[][] spatialBlock = DCTMath.calculateIDCT(frequencyBlock);
 
                 writeBlockToImage(stegoImage, spatialBlock, blockX * 8, blockY * 8);
@@ -94,7 +98,6 @@ public class ImageProcessor {
 
         return stegoImage;
     }
-
 
     private void saveBlockToSparseMatrix(SparseDCTMatrix sparseMatrix, double[][] freqBlock, int blockIndex) {
         for (int u = 0; u < 8; u++) {
@@ -116,8 +119,9 @@ public class ImageProcessor {
                 // Check boundaries so we don't get an OutOfBounds exception on the edges
                 if ((startX + x) < image.getWidth() && (startY + y) < image.getHeight()) {
 
-                    // Assuming you updated SpatialMatrix to handle the grayscale math under the hood!
-                    block[x][y] = image.getGrayscalePixel(startX + x, startY + y);
+                    // Assuming you updated SpatialMatrix to handle the grayscale math under the
+                    // hood!
+                    block[x][y] = image.getY(startX + x, startY + y);
 
                 } else {
                     // Pad with 0 if we hit the edge of the image
@@ -133,10 +137,7 @@ public class ImageProcessor {
             for (int y = 0; y < 8; y++) {
                 // Check boundaries so we don't get an OutOfBounds exception on the edges
                 if ((startX + x) < image.getWidth() && (startY + y) < image.getHeight()) {
-                    int grayValue = (int) Math.round(block[x][y]);
-                    grayValue = Math.max(0, Math.min(255, grayValue));
-
-                    image.setPixel(startX + x, startY + y, grayValue, grayValue, grayValue);
+                    image.setYChannel(startX + x, startY + y, block[x][y]);
                 }
             }
         }
@@ -158,6 +159,5 @@ public class ImageProcessor {
         }
         return block;
     }
-
 
 }

@@ -1,12 +1,12 @@
 package org.example.model.ga;
 
 import org.example.model.ga.abstractClasses.AbstractChromosome;
-import org.example.model.ga.abstractClasses.AbstractGene;
 import org.example.model.ga.abstractClasses.AbstractGeneticAlgorithm;
 import org.example.model.ga.abstractClasses.AbstractPopulation;
 import org.example.model.ga.abstractClasses.FitnessFunction;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
@@ -37,8 +37,6 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
     public void initializePopulation(AbstractPopulation emptyPop, AbstractChromosome<?> emptyChro, Object... params) {
         System.out.println("[INFO] Started " + (new Throwable()).getStackTrace()[0].getMethodName());
         this.setPopulation(emptyPop);
-
-//        this.population.addChromosome(emptyChro.generateChromosomeMath(this.totalBlocks, this.messageLength));
 
         for (int i = 0; i < this.populationSize; i++) {
             AbstractChromosome<?> newChromo = emptyChro.generateChromosomeRand(this.totalBlocks, this.messageLength);
@@ -87,30 +85,6 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         chromosome.mutate(this.totalBlocks, this.mutationRate);
     }
 
-    // Tourment selection:
-    // @Override
-    // protected AbstractChromosome<?> select(Object... params) {
-    //
-    // List<AbstractChromosome<?>> allChromosomes =
-    // this.population.getChromosomes();
-    // List<AbstractChromosome<?>> family = this.population.getNeighbors(chro);
-    //
-    // AbstractChromosome<?> bestMate = null;
-    //
-    // for (int i = 0; i < this.tournamentSize; i++) {
-    // AbstractChromosome<?> candidate;
-    // do {
-    // candidate = allChromosomes.get(random.nextInt(allChromosomes.size()));
-    // } while (candidate == chro || family.contains(candidate));
-    //
-    // if (bestMate == null || candidate.getFitnessScore() >
-    // bestMate.getFitnessScore()) {
-    // bestMate = candidate;
-    // }
-    // }
-    //
-    // return bestMate;
-    // }
     @Override
     protected AbstractChromosome<?> select(Object... params) {
         List<AbstractChromosome<?>> allChromosomes = this.population.getChromosomes();
@@ -131,22 +105,45 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         return best;
     }
 
-//     @Override
-//     protected AbstractChromosome<?> select(Object... params) {
-//     List<AbstractChromosome<?>> allChromosomes =
-//     this.population.getChromosomes();
-//     AbstractChromosome<?> best = null;
-//
-//     // Pick k random individuals and find the best one
-//     for (int i = 0; i < this.tournamentSize; i++) {
-//     AbstractChromosome<?> candidate =
-//     allChromosomes.get(random.nextInt(allChromosomes.size()));
-//
-//     if (best == null || candidate.getFitnessScore() > best.getFitnessScore()) {
-//     best = candidate;
-//     }
-//     }
-//
-//     return best; // Return the winner to act as Parent 1 or Parent 2
-//     }
+    // @Override
+    // protected AbstractChromosome<?> select(Object... params) {
+    // List<AbstractChromosome<?>> allChromosomes =
+    // this.population.getChromosomes();
+    // AbstractChromosome<?> best = null;
+    //
+    // // Pick k random individuals and find the best one
+    // for (int i = 0; i < this.tournamentSize; i++) {
+    // AbstractChromosome<?> candidate =
+    // allChromosomes.get(random.nextInt(allChromosomes.size()));
+    //
+    // if (best == null || candidate.getFitnessScore() > best.getFitnessScore()) {
+    // best = candidate;
+    // }
+    // }
+    //
+    // return best; // Return the winner to act as Parent 1 or Parent 2
+    // }
+
+    @Override
+    protected void restartPopulation(AbstractChromosome<?> emptyChro) {
+        List<AbstractChromosome<?>> all = this.population.getChromosomes();
+
+        // Sort ascending by fitness so the weakest are at the front
+        all.sort(Comparator.comparingDouble(AbstractChromosome::getFitnessScore));
+
+        int replaceCount = all.size() / 2;
+
+        for (int i = 0; i < replaceCount; i++) {
+            AbstractChromosome<?> weakest = all.get(i);
+
+            // Generate a fresh random chromosome
+            AbstractChromosome<?> fresh = emptyChro.generateChromosomeRand(this.totalBlocks, this.messageLength);
+            fresh.setFitnessScore(this.fitness.evaluateFitness(fresh));
+
+            // Swap it into the graph, inheriting the old one's edges
+            this.population.replaceNode(weakest, fresh);
+        }
+
+        System.out.println("[RESTART] Replaced " + replaceCount + " weakest chromosomes with fresh random ones.");
+    }
 }

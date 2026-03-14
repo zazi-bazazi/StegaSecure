@@ -14,6 +14,10 @@ public abstract class AbstractGeneticAlgorithm {
 
     protected final Random random = new Random();
 
+    // Stagnation restart parameters
+    protected static final int STAGNATION_LIMIT = 20;
+    protected static final double STAGNATION_TOLERANCE = 0.01;
+
     public AbstractGeneticAlgorithm(FitnessFunction function, double mutationRate, double crossoverRate,
             int populationSize, int maxGenerations) {
         this.fitness = function;
@@ -31,6 +35,9 @@ public abstract class AbstractGeneticAlgorithm {
         System.out.println("Finished initializing population, grading them next");
         runGeneration();
 
+        double previousAvgFitness = Double.NEGATIVE_INFINITY;
+        int stagnationCounter = 0;
+
         System.out.println("Started evolving");
         for (int generation = 0; generation < this.maxGenerations; generation++) {
 
@@ -42,8 +49,23 @@ public abstract class AbstractGeneticAlgorithm {
             for (int i = 0; i < this.populationSize; i++) {
                 sumFitness += this.population.getChromosomes().get(i).getFitnessScore();
             }
-            System.out.println("[INFO] Average fitness for generation number: " + generation + " is "
-                    + sumFitness / this.populationSize);
+            double avgFitness = sumFitness / this.populationSize;
+            System.out.println("[INFO] Average fitness for generation number: " + generation + " is " + avgFitness);
+
+            // --- Stagnation detection ---
+            if (Math.abs(avgFitness - previousAvgFitness) < STAGNATION_TOLERANCE) {
+                stagnationCounter++;
+            } else {
+                stagnationCounter = 0;
+            }
+            previousAvgFitness = avgFitness;
+
+            if (stagnationCounter >= STAGNATION_LIMIT) {
+                System.out.println("[RESTART] Stagnation detected at generation " + generation
+                        + " — restarting bottom 50% of population.");
+                restartPopulation(emptyChro);
+                stagnationCounter = 0;
+            }
 
             AbstractChromosome<?> currentBest = getBestChromosome();
 
@@ -92,5 +114,7 @@ public abstract class AbstractGeneticAlgorithm {
     protected abstract void mutate(AbstractChromosome<?> chromosome, Object... params);
 
     protected abstract AbstractChromosome<?> select(Object... params);
+
+    protected abstract void restartPopulation(AbstractChromosome<?> emptyChro);
 
 }

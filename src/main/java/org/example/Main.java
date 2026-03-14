@@ -7,6 +7,7 @@ import java.io.File;
 import java.util.Scanner;
 
 public class Main {
+    private static String path;
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
@@ -26,6 +27,7 @@ public class Main {
             case "2" -> runDecode(scanner, engine);
             default  -> System.err.println("[ERROR] Invalid option. Please enter 1 or 2.");
         }
+//        runDecode(scanner, engine);
 
         scanner.close();
     }
@@ -46,7 +48,7 @@ public class Main {
         String outputPath = scanner.nextLine();
 
         try {
-            engine.encode(secretText, inputImagePath, outputPath);
+            path = engine.encode(secretText, inputImagePath, outputPath);
         } catch (Exception e) {
             System.err.println("\n[FATAL ERROR] Encoding failed: " + e.getMessage());
             e.printStackTrace();
@@ -61,10 +63,11 @@ public class Main {
 
         System.out.print("Enter the stego image path (.png): ");
         String stegoImagePath = scanner.nextLine();
+//        String stegoImagePath = path;
 
         System.out.print("Enter the key file path (.key): ");
         String keyFilePath = scanner.nextLine();
-
+//        String keyFilePath = path.split("\\.")[0] + ".key";
         try {
             AbstractChromosome<?> chromosome = engine.loadChromosomeKey(new File(keyFilePath));
             String recovered = engine.decode(stegoImagePath, chromosome);

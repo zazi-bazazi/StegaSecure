@@ -97,15 +97,24 @@ public class SparseDCTMatrix {
     // ---- Coefficient access (node data) ----
 
     public void setCoefficient(int blockIndex, int coeffIndex, double value) {
-        if (value == 0.0) return;
         ArrayList<DCTNode> blockList = blockCoefficients.get(blockIndex);
-        for (DCTNode node : blockList) {
-            if (node.getCoefficientIndex() == coeffIndex) {
-                node.setValue(value);
+
+        for (int i = 0; i < blockList.size(); i++) {
+            if (blockList.get(i).getCoefficientIndex() == coeffIndex) {
+                if (value == 0.0) {
+                    // Remove the node — sparse means "only store non-zero"
+                    blockList.remove(i);
+                } else {
+                    blockList.get(i).setValue(value);
+                }
                 return;
             }
         }
-        blockList.add(new DCTNode(coeffIndex, value));
+
+        // Not found — add only if non-zero
+        if (value != 0.0) {
+            blockList.add(new DCTNode(coeffIndex, value));
+        }
     }
 
     public double getCoefficient(int blockIndex, int coeffIndex) {

@@ -12,6 +12,8 @@ import org.example.model.image.SparseDCTMatrix;
 import org.example.model.image.SpatialMatrix;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Predicate;
 
 public class Engine {
@@ -49,7 +51,21 @@ public class Engine {
 
         Predicate<AbstractChromosome<?>> stopEarly = (chromosome) -> chromosome.getFitnessScore() >= 60.0;
 
-        GeneticAlgorithm ga = new GeneticAlgorithm(evaluator, totalBlocks, secretBits.length());
+        // Build pool of non-zero coefficient positions from the frequency domain
+        // so the GA never picks a position that was killed by quantization
+        List<int[]> validPositions = new ArrayList<>();
+        for (int block = 0; block < totalBlocks; block++) {
+            for (int coeff = 1; coeff <= 15; coeff++) {
+                double value = this.frequencyDomain.getCoefficient(block, coeff);
+                if (Math.abs(value) >= 1.0) {
+                    validPositions.add(new int[]{block, coeff});
+                }
+            }
+        }
+        System.out.println("[INFO] Valid non-zero coefficient positions: " + validPositions.size()
+                + " (need " + secretBits.length() + " bits)");
+
+        GeneticAlgorithm ga = new GeneticAlgorithm(evaluator, totalBlocks, secretBits.length(), validPositions);
         setGeneticAlgorithm(ga);
 
         AbstractChromosome<?> finalChro = (Chromosome) ga.evolve(emptyPop, emptyChro, stopEarly);
@@ -63,24 +79,14 @@ public class Engine {
     private EmbeddedResult implementChromosomeToImage(String secretBits, AbstractChromosome<?> chromosome) {
         SparseDCTMatrix tempDCT = new SparseDCTMatrix(this.frequencyDomain);
 
-        int skipped = 0;
+        int bitIndex = 0;
 
-        for (int i = 0, bitIndex = 0; i < secretBits.length(); i++) {
-            if (i >= chromosome.getNumGenes()) {
-                skipped = secretBits.length() - bitIndex;
-                break;
-            }
-
+        for (int i = 0; i < chromosome.getNumGenes() && bitIndex < secretBits.length(); i++) {
             Gene targetGene = (Gene) chromosome.getGeneByIndex(i);
 
             double original = tempDCT.getCoefficient(
                     targetGene.getBlockIndex(),
                     targetGene.getCoefficientIndex());
-
-            if (Math.abs(original) < 1.0) {
-                skipped++;
-                continue;
-            }
 
             char secretBit = secretBits.charAt(bitIndex);
             double modified = parityModifier(original, secretBit);
@@ -92,6 +98,7 @@ public class Engine {
             bitIndex++;
         }
 
+        int skipped = secretBits.length() - bitIndex;
         return new EmbeddedResult(tempDCT, skipped);
     }
 
@@ -107,17 +114,12 @@ public class Engine {
      */
     private double evaluateFitness(AbstractChromosome<?> chromosome, String secretBits) {
         double sse = 0.0;
-        int skipped = 0;
 
-        for (int i = 0, bitIndex = 0; bitIndex < secretBits.length() && i < chromosome.getNumGenes(); i++) {
+        int bitIndex = 0;
+        for (int i = 0; i < chromosome.getNumGenes() && bitIndex < secretBits.length(); i++) {
             Gene gene = (Gene) chromosome.getGeneByIndex(i);
             double original = this.frequencyDomain.getCoefficient(
                     gene.getBlockIndex(), gene.getCoefficientIndex());
-
-            if (Math.abs(original) < 1.0) {
-                skipped++;
-                continue;
-            }
 
             double modified = parityModifier(original, secretBits.charAt(bitIndex));
             double deltaQ = modified - Math.round(original); // 0 or ±1 in quantized domain
@@ -129,6 +131,7 @@ public class Engine {
             bitIndex++;
         }
 
+        int skipped = secretBits.length() - bitIndex;
         int totalPixels = this.frequencyDomain.getWidth() * this.frequencyDomain.getHeight();
         double mse = sse / totalPixels;
 
@@ -206,16 +209,12 @@ public class Engine {
             StringBuilder extractedBits = new StringBuilder();
 
             // 2. Read bits from every gene position the chromosome points to
-            // (same order used during encoding)
+            // (same order used during encoding — no skipping)
             for (int i = 0; i < chromosome.getNumGenes(); i++) {
                 Gene gene = (Gene) chromosome.getGeneByIndex(i);
                 double coeff = stegoFrequency.getCoefficient(
                         gene.getBlockIndex(),
                         gene.getCoefficientIndex());
-
-                // Skip weak coefficients — they were skipped during encoding too
-                if (Math.abs(coeff) < 1.0)
-                    continue;
 
                 // Extract the LSB of the rounded coefficient
                 int intCoef = (int) Math.round(coeff);
@@ -251,7 +250,7 @@ public class Engine {
         }
     }
 
-    public void encode(String secretText, String inputImagePath, String outputPath) throws Exception {
+    public String encode(String secretText, String inputImagePath, String outputPath) throws Exception {
         String secretBits = textToBinaryString(secretText);
         System.out.println("\n[INFO] Bits to hide: " + secretBits.length() + " bits.");
 
@@ -268,10 +267,11 @@ public class Engine {
         System.out.println("\n[INFO] Starting Genetic Algorithm Evolution...");
         AbstractChromosome<?> winningChromosome = geneticAlgorithmManager(secretBits, totalBlocks);
 
-        buildAndSaveStegoImage(winningChromosome, secretBits, outputPath);
+        return buildAndSaveStegoImage(winningChromosome, secretBits, outputPath);
+
     }
 
-    public void buildAndSaveStegoImage(AbstractChromosome<?> bestChromosome, String secretBits, String outputPath) {
+    public String buildAndSaveStegoImage(AbstractChromosome<?> bestChromosome, String secretBits, String outputPath) {
         System.out.println("\n[INFO] Generating final Master Matrix...");
 
         EmbeddedResult result = this.implementChromosomeToImage(secretBits, bestChromosome);
@@ -289,9 +289,13 @@ public class Engine {
         System.out.println("[INFO] Running Inverse DCT to rebuild spatial pixels...");
         SpatialMatrix stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(finalDCT);
 
+        // Copy the original Cb/Cr channels so the stego image preserves color
+        stegoImage.copyChromaFrom(this.spatialDomain);
+
+        File imageFile = null;
         try {
             // Save PNG — lossless, preserves the embedded message
-            File imageFile = stegoImage.saveImage(outputPath, "png");
+            imageFile = stegoImage.saveImage(outputPath, "png");
 
             // Save JPEG preview — uses Java's built-in encoder (no external libraries)
             // Note: This JPEG is for visual preview only; the PNG is the actual carrier.
@@ -311,6 +315,7 @@ public class Engine {
             System.err.println("[FATAL ERROR] Failed to save outputs to disk.");
             e.printStackTrace();
         }
+        return imageFile.getAbsolutePath();
     }
 
     public void saveChromosomeKey(AbstractChromosome<?> chromosome, File keyFile) throws IOException {

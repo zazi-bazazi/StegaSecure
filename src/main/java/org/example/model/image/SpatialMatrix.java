@@ -141,6 +141,19 @@ public class SpatialMatrix {
         return outputFile;
     }
 
+    /**
+     * Copies the Cb and Cr channels from another SpatialMatrix.
+     * Use this after IDCT reconstruction to restore original color.
+     */
+    public void copyChromaFrom(SpatialMatrix original) {
+        int w = Math.min(this.width, original.width);
+        int h = Math.min(this.height, original.height);
+        for (int x = 0; x < w; x++) {
+            System.arraycopy(original.cbChannel[x], 0, this.cbChannel[x], 0, h);
+            System.arraycopy(original.crChannel[x], 0, this.crChannel[x], 0, h);
+        }
+    }
+
     private static int clamp(int value) {
         return Math.max(0, Math.min(255, value));
     }

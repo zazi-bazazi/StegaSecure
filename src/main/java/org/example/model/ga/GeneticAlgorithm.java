@@ -17,11 +17,14 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
     private final int totalBlocks;
     private final int messageLength;
     private final int tournamentSize;
+    private final List<int[]> validPositions; // non-zero (block, coeff) pairs
 
+    @SuppressWarnings("unchecked")
     public GeneticAlgorithm(FitnessFunction function, Object... params) {
         super(function, 0.1, 10, 200, 200);
         this.totalBlocks = (int) params[0];
         this.messageLength = (int) params[1];
+        this.validPositions = (params.length > 2) ? (List<int[]>) params[2] : null;
         this.tournamentSize = 5;
     }
 
@@ -39,7 +42,7 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         this.setPopulation(emptyPop);
 
         for (int i = 0; i < this.populationSize; i++) {
-            AbstractChromosome<?> newChromo = emptyChro.generateChromosomeRand(this.totalBlocks, this.messageLength);
+            AbstractChromosome<?> newChromo = emptyChro.generateChromosomeRand(this.totalBlocks, this.messageLength, this.validPositions);
             this.population.addChromosome(newChromo);
         }
 
@@ -63,7 +66,7 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         } while (parent2 == parent1);
 
         AbstractChromosome<?> child = this.crossover(parent1, parent2);
-        this.mutate(child, this.totalBlocks, this.mutationRate);
+        this.mutate(child, this.totalBlocks, this.mutationRate, this.validPositions);
 
         child.setFitnessScore(this.fitness.evaluateFitness(child));
 
@@ -136,8 +139,8 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         for (int i = 0; i < replaceCount; i++) {
             AbstractChromosome<?> weakest = all.get(i);
 
-            // Generate a fresh random chromosome
-            AbstractChromosome<?> fresh = emptyChro.generateChromosomeRand(this.totalBlocks, this.messageLength);
+            // Generate a fresh random chromosome using valid positions
+            AbstractChromosome<?> fresh = emptyChro.generateChromosomeRand(this.totalBlocks, this.messageLength, this.validPositions);
             fresh.setFitnessScore(this.fitness.evaluateFitness(fresh));
 
             // Swap it into the graph, inheriting the old one's edges

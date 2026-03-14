@@ -41,20 +41,32 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public AbstractChromosome<ArrayList<AbstractGene<?>>> generateChromosomeRand(Object... params) {
-        if (params.length != 2) {
-            // TODO make a custom Exception for this state
+        if (params.length < 2) {
             throw new IllegalStateException("MISSING PARAMS");
         }
 
         int totalBlocks = (int) params[0];
         int messageLength = (int) params[1];
+        List<int[]> validPositions = (params.length > 2 && params[2] != null) ? (List<int[]>) params[2] : null;
 
         LinkedHashSet<AbstractGene<?>> uniqueGenes = new LinkedHashSet<>();
 
         while (uniqueGenes.size() < messageLength) {
-            int randomBlock = (int) (Math.random() * totalBlocks);
-            int randomCoeff = 1 + (int) (Math.random() * 15); // AC indices 1-15 (survive quantization)
+            int randomBlock;
+            int randomCoeff;
+
+            if (validPositions != null && !validPositions.isEmpty()) {
+                // Pick from positions known to have non-zero coefficients
+                int[] pos = validPositions.get((int) (Math.random() * validPositions.size()));
+                randomBlock = pos[0];
+                randomCoeff = pos[1];
+            } else {
+                // Fallback: random selection (used in tests or when pool isn't available)
+                randomBlock = (int) (Math.random() * totalBlocks);
+                randomCoeff = 1 + (int) (Math.random() * 15);
+            }
 
             uniqueGenes.add(new Gene(randomCoeff, randomBlock));
         }
@@ -130,9 +142,11 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void mutate(Object... params) {
         int totalBlocks = (int) params[0];
         double mutationRate = (double) params[1];
+        List<int[]> validPositions = (params.length > 2 && params[2] != null) ? (List<int[]>) params[2] : null;
 
         for (int i = 0; i < this.getNumGenes(); i++) {
             Gene currentGene = (Gene) this.getGeneByIndex(i);
@@ -143,8 +157,18 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
             Gene candidate;
             int attempts = 0;
             do {
-                int newBlock = random.nextInt(totalBlocks);
-                int newCoeff = 1 + random.nextInt(15);
+                int newBlock;
+                int newCoeff;
+
+                if (validPositions != null && !validPositions.isEmpty()) {
+                    int[] pos = validPositions.get(random.nextInt(validPositions.size()));
+                    newBlock = pos[0];
+                    newCoeff = pos[1];
+                } else {
+                    newBlock = random.nextInt(totalBlocks);
+                    newCoeff = 1 + random.nextInt(15);
+                }
+
                 candidate = new Gene(newCoeff, newBlock);
                 attempts++;
 

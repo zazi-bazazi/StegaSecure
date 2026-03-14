@@ -5,72 +5,116 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * Represents an image in the YCbCr color space.
+ * RGB is converted to YCbCr once on load; all processing happens on the Y channel.
+ * YCbCr is converted back to RGB once on save.
+ */
 public class SpatialMatrix {
-    private final BufferedImage image;
+    private final int width;
+    private final int height;
 
-    // Constructor 1: Load an existing image from the hard drive
+    private final double[][] yChannel;
+    private final double[][] cbChannel;
+    private final double[][] crChannel;
+
+    // Constructor 1: Load an existing image from disk and convert RGB → YCbCr once
     public SpatialMatrix(String filePath) throws IOException {
         File file = new File(filePath);
-        this.image = ImageIO.read(file);
+        BufferedImage image = ImageIO.read(file);
+        this.width = image.getWidth();
+        this.height = image.getHeight();
+
+        this.yChannel = new double[width][height];
+        this.cbChannel = new double[width][height];
+        this.crChannel = new double[width][height];
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                int rgb = image.getRGB(x, y);
+                int r = (rgb >> 16) & 0xFF;
+                int g = (rgb >> 8) & 0xFF;
+                int b = rgb & 0xFF;
+
+                yChannel[x][y] = 0.299 * r + 0.587 * g + 0.114 * b;
+                cbChannel[x][y] = -0.168736 * r - 0.331264 * g + 0.5 * b + 128.0;
+                crChannel[x][y] = 0.5 * r - 0.418688 * g - 0.081312 * b + 128.0;
+            }
+        }
     }
 
-    // Constructor 2: Create a blank image
+    // Constructor 2: Create a blank image (all channels zeroed)
     public SpatialMatrix(int width, int height) {
-        this.image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        this.width = width;
+        this.height = height;
+        this.yChannel = new double[width][height];
+        this.cbChannel = new double[width][height];
+        this.crChannel = new double[width][height];
+
+        // Default Cb and Cr to 128 (neutral chroma) so pure-grayscale reconstruction works
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                cbChannel[x][y] = 128.0;
+                crChannel[x][y] = 128.0;
+            }
+        }
     }
 
+    // Constructor 3: Deep copy
     public SpatialMatrix(SpatialMatrix original) {
-        this.image = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_RGB);
-        this.image.getGraphics().drawImage(original.image, 0, 0, null);
+        this.width = original.width;
+        this.height = original.height;
+        this.yChannel = new double[width][height];
+        this.cbChannel = new double[width][height];
+        this.crChannel = new double[width][height];
+
+        for (int x = 0; x < width; x++) {
+            System.arraycopy(original.yChannel[x], 0, this.yChannel[x], 0, height);
+            System.arraycopy(original.cbChannel[x], 0, this.cbChannel[x], 0, height);
+            System.arraycopy(original.crChannel[x], 0, this.crChannel[x], 0, height);
+        }
     }
 
     public int getWidth() {
-        return image.getWidth();
+        return width;
     }
 
     public int getHeight() {
-        return image.getHeight();
+        return height;
     }
 
-    // Returns standard Grayscale Luminance directly
+    // ---- Y channel access (used by DCT / steganography) ----
+
     public double getGrayscalePixel(int x, int y) {
-        int rgb = image.getRGB(x, y);
-
-        // Bit-shifting to extract the colors
-        int red = (rgb >> 16) & 0xFF;
-        int green = (rgb >> 8) & 0xFF;
-        int blue = rgb & 0xFF;
-
-        return (red * 0.299) + (green * 0.587) + (blue * 0.114);
+        return yChannel[x][y];
     }
 
-    public void setPixel(int x, int y, int red, int green, int blue) {
-        // Re-pack the colors into a single 32-bit integer
-        int rgb = (red << 16) | (green << 8) | blue;
-        image.setRGB(x, y, rgb);
+    public void setYChannel(int x, int y, double value) {
+        yChannel[x][y] = Math.max(0, Math.min(255, value));
     }
 
-    public void setYChannel(int x, int y, double newy) {
-        int rgb = image.getRGB(x, y);
-        int red = (rgb >> 16) & 0xFF;
-        int green = (rgb >> 8) & 0xFF;
-        int blue = rgb & 0xFF;
+    // ---- Conversion back to RGB and saving ----
 
-        double cb = -0.168736 * red - 0.331264 * green + 0.5 * blue + 128.0;
-        double cr = 0.5 * red - 0.418688 * green - 0.081312 * blue + 128.0;
+    /**
+     * Converts the YCbCr channels to a BufferedImage (single conversion on save).
+     */
+    private BufferedImage toBufferedImage() {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
-        double newY_clamped = Math.max(0, Math.min(255, newy));
-        int newR = (int) Math.round(Math.max(0, Math.min(255, newY_clamped + 1.40200 * (cr - 128))));
-        int newG = (int) Math
-                .round(Math.max(0, Math.min(255, newY_clamped - 0.344136 * (cb - 128) - 0.714136 * (cr - 128))));
-        int newB = (int) Math.round(Math.max(0, Math.min(255, newY_clamped + 1.77200 * (cb - 128))));
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                double yVal = yChannel[x][y];
+                double cb = cbChannel[x][y];
+                double cr = crChannel[x][y];
 
-        this.setPixel(x, y, newR, newG, newB);
-    }
+                int r = clamp((int) Math.round(yVal + 1.40200 * (cr - 128.0)));
+                int g = clamp((int) Math.round(yVal - 0.344136 * (cb - 128.0) - 0.714136 * (cr - 128.0)));
+                int b = clamp((int) Math.round(yVal + 1.77200 * (cb - 128.0)));
 
-    public double getBluePixel(int x, int y) {
-        int rgb = image.getRGB(x, y);
-        return (double) (rgb & 0xFF);
+                image.setRGB(x, y, (r << 16) | (g << 8) | b);
+            }
+        }
+        return image;
     }
 
     public File saveImage(String directoryPath, String format) throws IOException {
@@ -89,10 +133,15 @@ public class SpatialMatrix {
         // 3. Combine the directory and the file name safely
         File outputFile = new File(directory, fileName);
 
-        // 4. Write the image to disk
-        ImageIO.write(this.image, format, outputFile);
+        // 4. Convert YCbCr → RGB once, then write to disk
+        BufferedImage image = toBufferedImage();
+        ImageIO.write(image, format, outputFile);
 
         System.out.println(">>> Image physically created at: " + outputFile.getAbsolutePath());
         return outputFile;
+    }
+
+    private static int clamp(int value) {
+        return Math.max(0, Math.min(255, value));
     }
 }

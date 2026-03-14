@@ -20,14 +20,14 @@ public class ImageProcessor {
     };
 
     // Unpacking LUTs: Maps a 1D ZigZag Index (0-63) back to u and v coordinates
-    private static final int[] ZIGZAG_U = {
+    public static final int[] ZIGZAG_U = {
             0, 0, 1, 2, 1, 0, 0, 1, 2, 3, 4, 3, 2, 1, 0, 0,
             1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, 0, 0, 1, 2, 3,
             4, 5, 6, 7, 7, 6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 6,
             7, 7, 6, 5, 4, 3, 4, 5, 6, 7, 7, 6, 5, 6, 7, 7
     };
 
-    private static final int[] ZIGZAG_V = {
+    public static final int[] ZIGZAG_V = {
             0, 1, 0, 0, 1, 2, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5,
             4, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4,
             3, 2, 1, 0, 1, 2, 3, 4, 5, 6, 7, 7, 6, 5, 4, 3,

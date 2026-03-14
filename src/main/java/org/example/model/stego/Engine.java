@@ -6,6 +6,7 @@ import org.example.model.ga.GeneticAlgorithm;
 import org.example.model.ga.Population;
 import org.example.model.ga.abstractClasses.AbstractChromosome;
 import org.example.model.ga.abstractClasses.FitnessFunction;
+import org.example.model.image.DCTMath;
 import org.example.model.image.ImageProcessor;
 import org.example.model.image.SparseDCTMatrix;
 import org.example.model.image.SpatialMatrix;
@@ -51,9 +52,6 @@ public class Engine {
         GeneticAlgorithm ga = new GeneticAlgorithm(evaluator, totalBlocks, secretBits.length());
         setGeneticAlgorithm(ga);
 
-        // ga.initializePopulation(emptyPop, emptyChro);
-        //
-        // ga.runGeneration();
         AbstractChromosome<?> finalChro = (Chromosome) ga.evolve(emptyPop, emptyChro, stopEarly);
 
         System.out.println("Finished! Best PSNR: " + finalChro.getFitnessScore());
@@ -84,7 +82,6 @@ public class Engine {
                 continue;
             }
 
-            // Use bitIndex (not i) so that skipped genes don't shift which bit we embed
             char secretBit = secretBits.charAt(bitIndex);
             double modified = parityModifier(original, secretBit);
             tempDCT.setCoefficient(
@@ -95,68 +92,69 @@ public class Engine {
             bitIndex++;
         }
 
-        // Return both variables packaged perfectly together!
         return new EmbeddedResult(tempDCT, skipped);
     }
 
+    /**
+     * Quantized-Parseval fitness: computes PSNR without any IDCT.
+     *
+     * Parseval's theorem: spatial-domain SSE = frequency-domain SSE.
+     * Since we modify quantized coefficients by Δq (0 or ±1), the real
+     * DCT-domain change is Δq × Q[u][v], so:
+     *   SSE = Σ (Δq × Q[u][v])²
+     *   MSE = SSE / totalPixels
+     *   PSNR = 10 × log10(255² / MSE)
+     */
     private double evaluateFitness(AbstractChromosome<?> chromosome, String secretBits) {
-        // Embed bits into a temporary copy of the frequency domain
-        EmbeddedResult result = implementChromosomeToImage(secretBits, chromosome);
-        int skipped = result.skipped();
+        double sse = 0.0;
+        int skipped = 0;
 
-        // Convert the modified frequency domain back to a spatial image
-        SpatialMatrix stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(result.matrix());
+        for (int i = 0, bitIndex = 0; bitIndex < secretBits.length() && i < chromosome.getNumGenes(); i++) {
+            Gene gene = (Gene) chromosome.getGeneByIndex(i);
+            double original = this.frequencyDomain.getCoefficient(
+                    gene.getBlockIndex(), gene.getCoefficientIndex());
 
-        // Calculate the true spatial-domain PSNR against the original cover image
-        double psnrScore = ImageMetrics.calculatePSNR(this.spatialDomain, stegoImage);
+            if (Math.abs(original) < 1.0) {
+                skipped++;
+                continue;
+            }
 
-        // Penalise any chromosome that couldn't embed all bits
-        if (skipped > 0) psnrScore /= PENALTY;
+            double modified = parityModifier(original, secretBits.charAt(bitIndex));
+            double deltaQ = modified - Math.round(original); // 0 or ±1 in quantized domain
+
+            // Map zig-zag index → (u,v) → quantization step Q[u][v]
+            int qStep = getQuantizationStep(gene.getCoefficientIndex());
+            sse += (deltaQ * qStep) * (deltaQ * qStep);
+
+            bitIndex++;
+        }
+
+        int totalPixels = this.frequencyDomain.getWidth() * this.frequencyDomain.getHeight();
+        double mse = sse / totalPixels;
+
+        double psnrScore;
+        if (mse == 0.0 && skipped == 0) {
+            psnrScore = Double.MAX_VALUE;
+        } else if (mse == 0.0) {
+            psnrScore = Math.max(0, MINIMAL_QUALITY - (skipped * PENALTY));
+        } else {
+            psnrScore = 10.0 * Math.log10(255.0 * 255.0 / mse);
+            if (psnrScore < MINIMAL_QUALITY || skipped > 0)
+                psnrScore /= PENALTY;
+        }
 
         chromosome.setFitnessScore(psnrScore);
         return psnrScore;
     }
 
-//    private double evaluateFitness(AbstractChromosome<?> chromosome, String secretBits) {
-//        double dctSSE = 0.0;
-//        int skipped = 0;
-//
-//        for (int i = 0, bitIndex = 0; bitIndex < secretBits.length() && i < chromosome.getNumGenes(); i++) {
-//            Gene gene = (Gene) chromosome.getGeneByIndex(i);
-//            double original = this.frequencyDomain.getCoefficient(
-//                    gene.getBlockIndex(), gene.getCoefficientIndex());
-//
-//            if (Math.abs(original) < 1.0) {
-//                skipped++;
-//                continue;
-//            }
-//
-//            double modified = parityModifier(original, secretBits.charAt(bitIndex));
-//            double delta = modified - original; // Will be 0 or ±1
-//            dctSSE += delta * delta; // ΔF² — no IDCT needed at all!
-//            bitIndex++;
-//        }
-//
-//        // Parseval: pixel-domain MSE = dctSSE / totalPixels
-//        int totalPixels = this.frequencyDomain.getWidth() * this.frequencyDomain.getHeight();
-//        double mse = dctSSE / totalPixels;
-//
-//        double psnrScore;
-//        if (mse == 0.0 && skipped == 0) {
-//            // True perfection: all bits embedded with zero distortion (parity already matched)
-//            psnrScore = Double.MAX_VALUE;
-//        } else if (mse == 0.0){
-//            // No distortion recorded, but bits were dropped — heavily penalise by skipped count
-//            psnrScore = Math.max(0, MINIMAL_QUALITY - (skipped * PENALTY));
-//        } else {
-//            psnrScore = 20.0 * Math.log10(255.0 / Math.sqrt(mse));
-//            if (psnrScore < MINIMAL_QUALITY || skipped > 0)
-//                psnrScore /= PENALTY;
-//        }
-//
-//        chromosome.setFitnessScore(psnrScore);
-//        return psnrScore;
-//    }
+    /**
+     * Maps a zig-zag coefficient index (0-63) to its JPEG quantization step value.
+     */
+    private static int getQuantizationStep(int zigzagIndex) {
+        int u = ImageProcessor.ZIGZAG_U[zigzagIndex];
+        int v = ImageProcessor.ZIGZAG_V[zigzagIndex];
+        return DCTMath.LUMA_QUANTIZATION[u][v];
+    }
 
 
         private double parityModifier(double coefficient, char bit) {
@@ -292,20 +290,22 @@ public class Engine {
         SpatialMatrix stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(finalDCT);
 
         try {
-            // Save image — PNG is mandatory so JPEG recompression doesn't destroy the
-            // message.
-            // saveImage() returns the File it created so we can place the key file right
-            // next to it.
+            // Save PNG — lossless, preserves the embedded message
             File imageFile = stegoImage.saveImage(outputPath, "png");
 
-            // Derive the key file name from the image file name (same stem, .key extension)
+            // Save JPEG preview — uses Java's built-in encoder (no external libraries)
+            // Note: This JPEG is for visual preview only; the PNG is the actual carrier.
+            File jpegFile = stegoImage.saveImage(outputPath, "jpg");
+
+            // Derive the key file name from the PNG file name (same stem, .key extension)
             String keyFileName = imageFile.getName().replace(".png", ".key");
             File keyFile = new File(imageFile.getParent(), keyFileName);
             saveChromosomeKey(bestChromosome, keyFile);
 
             System.out.println("\n==================================================");
-            System.out.println("  STEGO-IMAGE SAVED TO : " + imageFile.getAbsolutePath());
-            System.out.println("  KEY FILE SAVED TO    : " + keyFile.getAbsolutePath());
+            System.out.println("  STEGO-IMAGE (PNG) : " + imageFile.getAbsolutePath());
+            System.out.println("  JPEG PREVIEW      : " + jpegFile.getAbsolutePath());
+            System.out.println("  KEY FILE          : " + keyFile.getAbsolutePath());
             System.out.println("==================================================");
         } catch (Exception e) {
             System.err.println("[FATAL ERROR] Failed to save outputs to disk.");

@@ -85,7 +85,7 @@ public abstract class AbstractGeneticAlgorithm {
 
             if (stoppingCondition.test(currentBest)) {
                 System.out.println("Evolution finished early at generation: " + generation);
-                break;
+                break ;
             }
         }
 

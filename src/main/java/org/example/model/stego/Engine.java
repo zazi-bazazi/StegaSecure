@@ -51,8 +51,17 @@ public class Engine {
         Predicate<AbstractChromosome<?>> stopEarly = (chromosome) -> chromosome.getFitnessScore() >= 60.0;
 
         // Build pool of non-zero coefficient positions from the frequency domain
+        // by traversing the blocks as a graph (BFS) using the spatial adjacency list
         List<int[]> validPositions = new ArrayList<>();
-        for (int block = 0; block < totalBlocks; block++) {
+        boolean[] visitedBlocks = new boolean[totalBlocks];
+        java.util.Queue<Integer> queue = new java.util.LinkedList<>();
+
+        // Start traversal from the top-left block (Node 0)
+        queue.add(0);
+        visitedBlocks[0] = true;
+
+        while (!queue.isEmpty()) {
+            int block = queue.poll();
 
             for (DCTNode node : this.frequencyDomain.getNonZeroCoefficientsForBlock(block)) {
                 int coeff = node.getCoefficientIndex();
@@ -60,6 +69,14 @@ public class Engine {
                 // Skip the DC coefficient (index 0)
                 if (coeff > 0 && Math.abs(node.getValue()) >= 1.0) {
                     validPositions.add(new int[] { block, coeff });
+                }
+            }
+
+            // Traverse to adjacent blocks using the SparseDCTMatrix adjacency list!
+            for (int neighbor : this.frequencyDomain.getNeighborBlocks(block)) {
+                if (!visitedBlocks[neighbor]) {
+                    visitedBlocks[neighbor] = true;
+                    queue.add(neighbor);
                 }
             }
         }

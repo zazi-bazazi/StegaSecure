@@ -4,6 +4,8 @@ import java.util.ArrayList;
 
 public class ImageProcessor {
 
+    private static final int BLOCK_SIZE = 8;
+
     private ImageProcessor() {
     }
 
@@ -43,13 +45,19 @@ public class ImageProcessor {
     }
 
     /**
+     * Converts a spatial image into a sparse frequency domain representation.
+     * <p>
+     * Slices the image into 8x8 blocks, applies the DCT and quantization,
+     * and packs the non-zero coefficients into a graph-based SparseDCTMatrix
+     * using a zig-zag scanning sequence.
+     * </p>
      *
-     * @param image
-     * @return
+     * @param image The spatial domain matrix of the image.
+     * @return A SparseDCTMatrix containing only the non-zero quantized coefficients.
      */
     public SparseDCTMatrix convertToFrequencyDomain(SpatialMatrix image) {
-        int blocksX = (int) Math.ceil(image.getWidth() / 8.0);
-        int blocksY = (int) Math.ceil(image.getHeight() / 8.0);
+        int blocksX = (int) Math.ceil((double) image.getWidth() / BLOCK_SIZE);
+        int blocksY = (int) Math.ceil((double) image.getHeight() / BLOCK_SIZE);
         int totalBlocks = blocksX * blocksY;
 
         SparseDCTMatrix sparseMatrix = new SparseDCTMatrix(image.getWidth(), image.getHeight());
@@ -58,8 +66,8 @@ public class ImageProcessor {
         for (int X = 0; X < blocksX; X++) {
             for (int Y = 0; Y < blocksY; Y++) {
 
-                int startPixelX = X * 8;
-                int startPixelY = Y * 8;
+                int startPixelX = X * BLOCK_SIZE;
+                int startPixelY = Y * BLOCK_SIZE;
 
                 // Extract a single 8x8 block from the spatial image
                 double[][] spatialBlock = extractBlock(image, startPixelX, startPixelY);
@@ -78,16 +86,21 @@ public class ImageProcessor {
     }
 
     /**
+     * Converts a sparse frequency domain matrix back into a spatial image.
+     * <p>
+     * Unpacks the zig-zag coefficients, dequantizes them, applies the Inverse DCT,
+     * and stitches the 8x8 blocks back into a full image grid.
+     * </p>
      *
-     * @param frequencyMatrix
-     * @return
+     * @param frequencyMatrix The sparse matrix containing quantized DCT coefficients.
+     * @return A reconstructed SpatialMatrix representing the image pixels.
      */
     public SpatialMatrix convertToSpatialDomain(SparseDCTMatrix frequencyMatrix) {
 
         SpatialMatrix stegoImage = new SpatialMatrix(frequencyMatrix.getWidth(), frequencyMatrix.getHeight());
 
-        int blocksX = (int) Math.ceil(frequencyMatrix.getWidth() / 8.0);
-        int blocksY = (int) Math.ceil(frequencyMatrix.getHeight() / 8.0);
+        int blocksX = (int) Math.ceil((double) frequencyMatrix.getWidth() / BLOCK_SIZE);
+        int blocksY = (int) Math.ceil((double) frequencyMatrix.getHeight() / BLOCK_SIZE);
         int blockIndex = 0;
 
         for (int blockX = 0; blockX < blocksX; blockX++) {
@@ -96,7 +109,7 @@ public class ImageProcessor {
                 double[][] frequencyBlock = DCTMath.dequantize(quantizedBlock);
                 double[][] spatialBlock = DCTMath.calculateIDCT(frequencyBlock);
 
-                writeBlockToImage(stegoImage, spatialBlock, blockX * 8, blockY * 8);
+                writeBlockToImage(stegoImage, spatialBlock, blockX * BLOCK_SIZE, blockY * BLOCK_SIZE);
 
                 blockIndex++;
             }
@@ -106,14 +119,18 @@ public class ImageProcessor {
     }
 
     /**
+     * Saves a 2D block of frequency coefficients into the sparse matrix structure.
+     * <p>
+     * Maps the 2D (u,v) coordinates to a 1D index using a zig-zag Look-Up Table (LUT).
+     * </p>
      *
-     * @param sparseMatrix
-     * @param freqBlock
-     * @param blockIndex
+     * @param sparseMatrix The target sparse matrix.
+     * @param freqBlock The 8x8 block of quantized coefficients to save.
+     * @param blockIndex The linear index of the current 8x8 block.
      */
     private void saveBlockToSparseMatrix(SparseDCTMatrix sparseMatrix, double[][] freqBlock, int blockIndex) {
-        for (int u = 0; u < 8; u++) {
-            for (int v = 0; v < 8; v++) {
+        for (int u = 0; u < BLOCK_SIZE; u++) {
+            for (int v = 0; v < BLOCK_SIZE; v++) {
 
                 // zig-zag index from the LUT
                 int coeffIndex = ZIGZAG_INDEX[u][v];
@@ -124,17 +141,22 @@ public class ImageProcessor {
     }
 
     /**
+     * Extracts an 8x8 block of pixels from the main image matrix.
+     * <p>
+     * If the block exceeds the image boundaries, the out-of-bounds pixels
+     * are padded with 0.0.
+     * </p>
      *
-     * @param image
-     * @param startX
-     * @param startY
-     * @return
+     * @param image The spatial image matrix.
+     * @param startX The starting X coordinate (column) in the image.
+     * @param startY The starting Y coordinate (row) in the image.
+     * @return An 8x8 array representing the extracted spatial block.
      */
     private double[][] extractBlock(SpatialMatrix image, int startX, int startY) {
-        double[][] block = new double[8][8];
+        double[][] block = new double[BLOCK_SIZE][BLOCK_SIZE];
 
-        for (int x = 0; x < 8; x++) {
-            for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < BLOCK_SIZE; x++) {
+            for (int y = 0; y < BLOCK_SIZE; y++) {
 
                 if ((startX + x) < image.getWidth() && (startY + y) < image.getHeight()) {
 
@@ -149,15 +171,22 @@ public class ImageProcessor {
     }
 
     /**
+     * Writes an 8x8 block of reconstructed spatial pixels back into the main image matrix.
+     * <p>
+     * This method maps the localized 8x8 block coordinates back to the global
+     * image coordinates. It includes boundary checks to ensure that blocks on the
+     * right or bottom edges of an image (whose dimensions aren't perfect multiples
+     * of 8) do not throw out-of-bounds exceptions.
+     * </p>
      *
-     * @param image
-     * @param block
-     * @param startX
-     * @param startY
+     * @param image The target spatial image matrix where the pixels will be written.
+     * @param block The 8x8 array of spatial pixel values to write.
+     * @param startX The global X coordinate (column) in the image corresponding to the top-left of this block.
+     * @param startY The global Y coordinate (row) in the image corresponding to the top-left of this block.
      */
     private void writeBlockToImage(SpatialMatrix image, double[][] block, int startX, int startY) {
-        for (int x = 0; x < 8; x++) {
-            for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < BLOCK_SIZE; x++) {
+            for (int y = 0; y < BLOCK_SIZE; y++) {
 
                 if ((startX + x) < image.getWidth() && (startY + y) < image.getHeight()) {
                     image.setYChannel(startX + x, startY + y, block[x][y]);
@@ -167,13 +196,20 @@ public class ImageProcessor {
     }
 
     /**
+     * Reconstructs a full 8x8 2D array from the 1D sparse representation of a block.
+     * <p>
+     * This method iterates through the non-zero coefficients stored in the sparse matrix
+     * for a given block. It uses the inverse zig-zag Look-Up Tables (LUTs) to instantly
+     * translate the 1D coefficient index back to its correct 2D (u, v) position in the 8x8 grid.
+     * Unspecified positions will naturally default to 0.0.
+     * </p>
      *
-     * @param matrix
-     * @param index
-     * @return
+     * @param matrix The sparse frequency matrix containing the stored non-zero coefficients.
+     * @param index The linear index of the 8x8 block to unpack.
+     * @return A standard 8x8 2D array of the block's frequency coefficients.
      */
     private double[][] unpackBlock(SparseDCTMatrix matrix, int index) {
-        double[][] block = new double[8][8];
+        double[][] block = new double[BLOCK_SIZE][BLOCK_SIZE];
 
         ArrayList<DCTNode> coefficientsBlock = matrix.getNonZeroCoefficientsForBlock(index);
 

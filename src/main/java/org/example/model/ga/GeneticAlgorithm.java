@@ -112,7 +112,7 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
      */
     @Override
     protected void mutate(AbstractChromosome<?> chromosome, Object... params) {
-        chromosome.mutate(this.totalBlocks, this.mutationRate);
+        chromosome.mutate(this.totalBlocks, this.mutationRate, validPositions);
     }
 
     /**

@@ -137,7 +137,7 @@ public abstract class AbstractGeneticAlgorithm {
     public void savePopulationToFile(String filename) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
             for (int i = 0; i < this.populationSize; i++) {
-                writer.write("Indiv " + i + ": " + this.population.getChromosomes().get(i).toString());
+                writer.write("Indiv " + i + ": " + this.population.getChromosomes().get(i).toString() +"\n");
                 writer.newLine();
             }
             System.out.println("Population successfully saved to " + filename);

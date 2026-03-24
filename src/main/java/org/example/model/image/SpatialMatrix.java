@@ -18,6 +18,10 @@ public class SpatialMatrix {
     private final double[][] cbChannel;
     private final double[][] crChannel;
 
+    private static final int PIXEL_MAX_VALUE = 255;
+    private static final int PIXEL_MIN_VALUE = 0;
+    private static final double GRAY_SCALE_VALUE = 128.0;
+
     /**
      * Constructs a SpatialMatrix by loading an image file from disk.
      * @param file file The source image file
@@ -41,8 +45,8 @@ public class SpatialMatrix {
                 int b = rgb & 0xFF;
 
                 yChannel[x][y] = 0.299 * r + 0.587 * g + 0.114 * b;
-                cbChannel[x][y] = -0.168736 * r - 0.331264 * g + 0.5 * b + 128.0;
-                crChannel[x][y] = 0.5 * r - 0.418688 * g - 0.081312 * b + 128.0;
+                cbChannel[x][y] = -0.168736 * r - 0.331264 * g + 0.5 * b + GRAY_SCALE_VALUE;
+                crChannel[x][y] = 0.5 * r - 0.418688 * g - 0.081312 * b + GRAY_SCALE_VALUE;
             }
         }
     }
@@ -65,8 +69,8 @@ public class SpatialMatrix {
         // Default Cb and Cr to 128 (neutral chroma) so pure-grayscale reconstruction works
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                cbChannel[x][y] = 128.0;
-                crChannel[x][y] = 128.0;
+                cbChannel[x][y] = GRAY_SCALE_VALUE;
+                crChannel[x][y] = GRAY_SCALE_VALUE;
             }
         }
     }
@@ -117,7 +121,7 @@ public class SpatialMatrix {
      * @param value The new luminance value.
      */
     public void setYChannel(int x, int y, double value) {
-        yChannel[x][y] = Math.max(0, Math.min(255, value));
+        yChannel[x][y] = Math.max(PIXEL_MIN_VALUE, Math.min(PIXEL_MAX_VALUE, value));
     }
 
     /**
@@ -133,9 +137,9 @@ public class SpatialMatrix {
                 double cb = cbChannel[x][y];
                 double cr = crChannel[x][y];
 
-                int r = clamp((int) Math.round(yVal + 1.40200 * (cr - 128.0)));
-                int g = clamp((int) Math.round(yVal - 0.344136 * (cb - 128.0) - 0.714136 * (cr - 128.0)));
-                int b = clamp((int) Math.round(yVal + 1.77200 * (cb - 128.0)));
+                int r = clamp((int) Math.round(yVal + 1.40200 * (cr - GRAY_SCALE_VALUE)));
+                int g = clamp((int) Math.round(yVal - 0.344136 * (cb - GRAY_SCALE_VALUE) - 0.714136 * (cr - GRAY_SCALE_VALUE)));
+                int b = clamp((int) Math.round(yVal + 1.77200 * (cb - GRAY_SCALE_VALUE)));
 
                 image.setRGB(x, y, (r << 16) | (g << 8) | b);
             }
@@ -192,6 +196,6 @@ public class SpatialMatrix {
      * @return      The value constrained between 0 and 255 inclusive.
      */
     private static int clamp(int value) {
-        return Math.max(0, Math.min(255, value));
+        return Math.max(PIXEL_MIN_VALUE, Math.min(PIXEL_MAX_VALUE, value));
     }
 }

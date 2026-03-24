@@ -11,6 +11,7 @@ import java.util.Random;
 public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
     private final Random random = new Random();
 
+    private static final int USEABLE_COEFF_PER_BLOCK = 19;
     public Chromosome() {
         this.chromosomeGenes = new ArrayList<>();
     }
@@ -69,7 +70,7 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
             } else {
                 // Fallback: random selection (used in tests or when pool isn't available)
                 randomBlock = (int) (Math.random() * totalBlocks);
-                randomCoeff = 1 + (int) (Math.random() * 15);
+                randomCoeff = 1 + (int) (Math.random() * USEABLE_COEFF_PER_BLOCK);
             }
 
             uniqueGenes.add(new Gene(randomCoeff, randomBlock));
@@ -95,8 +96,7 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
         int totalBlocks = (int) params[0];
         int L = (int) params[1]; // messageLength
 
-        final int usableCoefficientsPerBlock = 15;
-        final int N = totalBlocks * usableCoefficientsPerBlock;
+        final int N = totalBlocks * USEABLE_COEFF_PER_BLOCK;
 
         final int NL = (int) Math.floor((double) N / L);
 
@@ -106,8 +106,8 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
 
             int pos = (i * NL) % N;
 
-            int blockIndex = pos / usableCoefficientsPerBlock;
-            int coeffIndex = 1 + (pos % usableCoefficientsPerBlock);
+            int blockIndex = pos / USEABLE_COEFF_PER_BLOCK;
+            int coeffIndex = 1 + (pos % USEABLE_COEFF_PER_BLOCK);
 
             generatedGenes.add(new Gene(coeffIndex, blockIndex));
         }
@@ -141,10 +141,10 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
                 this.addGene(backupGene);
             } else {
                 int totalBlocks = (int) params[0];
-                Gene emergencyGene = new Gene(1 + random.nextInt(15), random.nextInt(totalBlocks));
+                Gene emergencyGene = new Gene(1 + random.nextInt(USEABLE_COEFF_PER_BLOCK), random.nextInt(totalBlocks));
 
                 while (this.getGenes().contains(emergencyGene)) {
-                    emergencyGene = new Gene(1 + random.nextInt(15), random.nextInt(totalBlocks));
+                    emergencyGene = new Gene(1 + random.nextInt(USEABLE_COEFF_PER_BLOCK), random.nextInt(totalBlocks));
                 }
                 this.addGene(emergencyGene);
             }
@@ -185,7 +185,7 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
                     newCoeff = pos[1];
                 } else {
                     newBlock = random.nextInt(totalBlocks);
-                    newCoeff = 1 + random.nextInt(15);
+                    newCoeff = 1 + random.nextInt(USEABLE_COEFF_PER_BLOCK);
                 }
 
                 candidate = new Gene(newCoeff, newBlock);

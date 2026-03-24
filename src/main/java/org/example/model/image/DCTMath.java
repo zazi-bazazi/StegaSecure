@@ -20,9 +20,14 @@ public class DCTMath {
 
 
     /**
+     * Applies the Forward Discrete Cosine Transform (FDCT) to an 8x8 spatial block.
+     * <p>
+     * Level shifting (subtracting 128) is applied to center the pixel values
+     * around zero before transforming them into the frequency domain.
+     * </p>
      *
-      * @param spatialBlock
-     * @return
+     * @param spatialBlock An 8x8 array of spatial pixel values (0-255).
+     * @return An 8x8 array of frequency domain coefficients.
      */
     public static double[][] calculateDCT(double[][] spatialBlock) {
         double[][] frequencyBlock = new double[8][8];
@@ -53,19 +58,24 @@ public class DCTMath {
     }
 
     /**
+     * Applies the Inverse Discrete Cosine Transform (IDCT) to an 8x8 frequency block.
+     * <p>
+     * Reconstructs spatial pixels from frequency coefficients and reverses
+     * the level shifting by adding 128. Output is clamped to the 0-255 range.
+     * </p>
      *
-      * @param frequencyBlock
-     * @return
+     * @param frequencyBlock An 8x8 array of frequency domain coefficients.
+     * @return An 8x8 array of reconstructed spatial pixel values.
      */
     public static double[][] calculateIDCT(double[][] frequencyBlock) {
-        double[][] spatialBlock = new double[8][8];
+        double[][] spatialBlock = new double[BLOCK_SIZE][BLOCK_SIZE];
 
-        for (int x = 0; x < 8; x++) {
-            for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < BLOCK_SIZE; x++) {
+            for (int y = 0; y < BLOCK_SIZE; y++) {
                 double sum = 0.0;
 
-                for (int u = 0; u < 8; u++) {
-                    for (int v = 0; v < 8; v++) {
+                for (int u = 0; u < BLOCK_SIZE; u++) {
+                    for (int v = 0; v < BLOCK_SIZE; v++) {
                         double cu = (u == 0) ? (1.0 / Math.sqrt(2)) : 1.0;
                         double cv = (v == 0) ? (1.0 / Math.sqrt(2)) : 1.0;
 
@@ -87,27 +97,33 @@ public class DCTMath {
     }
 
     /**
+     * Quantizes an 8x8 block of frequency coefficients using the standard JPEG Luma table.
+     * <p>
+     * This step reduces precision in high-frequency areas, driving many coefficients
+     * to zero to achieve compression/sparsity.
+     * </p>
      *
-     * @param freqBlock
-     * @return
+     * @param freqBlock The 8x8 array of unquantized DCT coefficients.
+     * @return An 8x8 array of quantized integer values (stored as doubles).
      */
     public static double[][] quantize(double[][] freqBlock) {
-        double[][] quantized = new double[8][8];
-        for (int u = 0; u < 8; u++)
-            for (int v = 0; v < 8; v++)
+        double[][] quantized = new double[BLOCK_SIZE][BLOCK_SIZE];
+        for (int u = 0; u < BLOCK_SIZE; u++)
+            for (int v = 0; v < BLOCK_SIZE; v++)
                 quantized[u][v] = Math.round(freqBlock[u][v] / LUMA_QUANTIZATION[u][v]);
         return quantized;
     }
 
     /**
+     * Dequantizes an 8x8 block by multiplying it against the Luma table.
      *
-     * @param quantizedBlock
-     * @return
+     * @param quantizedBlock The 8x8 array of quantized coefficients.
+     * @return The approximated 8x8 array of frequency coefficients.
      */
     public static double[][] dequantize(double[][] quantizedBlock) {
-        double[][] dequantized = new double[8][8];
-        for (int u = 0; u < 8; u++)
-            for (int v = 0; v < 8; v++)
+        double[][] dequantized = new double[BLOCK_SIZE][BLOCK_SIZE];
+        for (int u = 0; u < BLOCK_SIZE; u++)
+            for (int v = 0; v < BLOCK_SIZE; v++)
                 dequantized[u][v] = quantizedBlock[u][v] * LUMA_QUANTIZATION[u][v];
         return dequantized;
     }

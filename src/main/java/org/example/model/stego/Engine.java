@@ -24,6 +24,10 @@ public class Engine {
     private record EmbeddedResult(SparseDCTMatrix matrix, int skipped) {
     }
 
+    public record FilesRecord(BufferedImage stegoImage, String keyFileInString) {
+
+    }
+
     private Engine() {
     }
 
@@ -174,7 +178,7 @@ public class Engine {
      */
     private double parityModifier(double coefficient, char bit) {
         int intCoef = (int) Math.round(coefficient);
-        if ((intCoef % 2) == bit - '0') {
+        if ((Math.abs(intCoef) % 2) == bit - '0') {
             return (double) intCoef;
         }
         if (intCoef >= 0) {
@@ -308,7 +312,7 @@ public class Engine {
      * @see #geneticAlgorithmManager(String, int)
      * @see #implementChromosomeToImage(String, AbstractChromosome)
      */
-    public BufferedImage encode(String secretText, File inputImagePath) throws IOException {
+    public FilesRecord encode(String secretText, File inputImagePath) throws IOException {
         String secretBits = textToBinaryString(secretText);
         System.out.println("\n[INFO] Bits to hide: " + secretBits.length() + " bits.");
 
@@ -345,7 +349,7 @@ public class Engine {
         // Copy the original Cb/Cr channels so the stego image preserves color
         stegoImage.copyChromaFrom(this.spatialDomain);
 
-        return stegoImage.saveImage();
+        return new FilesRecord(stegoImage.saveImage(), generateChromosomeData(winningChromosome));
 
     }
 
@@ -384,7 +388,7 @@ public class Engine {
             // Derive the key file name from the PNG file name (same stem, .key extension)
             String keyFileName = imageFile.getName().replace(".png", ".key");
             File keyFile = new File(imageFile.getParent(), keyFileName);
-            saveChromosomeKey(bestChromosome, keyFile);
+            saveChromosomeKey(bestChromosome);
 
             System.out.println("\n==================================================");
             System.out.println("  STEGO-IMAGE (PNG) : " + imageFile.getAbsolutePath());
@@ -404,13 +408,13 @@ public class Engine {
      * </p>
      * Each gene will show in a new line in this format
      * {@code BlockIndex, CoefficientIndex}
-     * 
+     *
      * @param chromosome The optimized chromosome selected by the Genetic Algorithm.
-     * @param keyFile    The destination file.
      * @throws IOException IOException If the file cannot be created or written to.
      */
-    public void saveChromosomeKey(AbstractChromosome<?> chromosome, File keyFile) throws IOException {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(keyFile))) {
+    public void saveChromosomeKey(AbstractChromosome<?> chromosome) throws IOException {
+        File file = new File("stegoImage" + System.currentTimeMillis() + ".txt");
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             // writer.write("# StegaSecure Key File — do not edit");
             // writer.newLine();
             // writer.write("# Format: blockIndex,coefficientIndex (one gene per line)");
@@ -422,8 +426,33 @@ public class Engine {
                 writer.newLine();
             }
         }
-        System.out.println(">>> Key file saved at: " + keyFile.getAbsolutePath());
+//        System.out.println(">>> Key file saved at: " + keyFile.getAbsolutePath());
+        System.out.println(">>> Key file saved ");
     }
+
+    public String generateChromosomeData(AbstractChromosome<?> chromosome) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < chromosome.getNumGenes(); i++) {
+            Gene gene = (Gene) chromosome.getGeneByIndex(i);
+            sb.append(gene.getBlockIndex()).append(",").append(gene.getCoefficientIndex()).append("\n");
+        }
+        return sb.toString();
+    }
+
+    public static void saveToFile(String data, String folderPath, String fileName) throws IOException {
+        File directory = new File(folderPath);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+
+        File file = new File(directory, fileName);
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            writer.write(data);
+        }
+        System.out.println("File successfully saved to: " + file.getAbsolutePath());
+    }
+
 
     /**
      * Reconstructs a chromosome from a serialized key file.

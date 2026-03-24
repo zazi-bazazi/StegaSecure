@@ -49,11 +49,14 @@ public class Main {
         String outputPath = scanner.nextLine();
 
         try {
-            BufferedImage image = engine.encode(secretText, new File(inputImagePath));
+            Engine.FilesRecord files = engine.encode(secretText, new File(inputImagePath));
+
+            BufferedImage image = files.stegoImage();
+            String keyFile = files.keyFileInString();
 
             File outputFile = new File(outputPath, "stego_result_" + System.currentTimeMillis() + ".png");
             ImageIO.write(image, "png", outputFile);
-
+            Engine.saveToFile(keyFile, outputPath, outputFile.getName().replace(".png", ".txt"));
         } catch (Exception e) {
             System.err.println("\n[FATAL ERROR] Encoding failed: " + e.getMessage());
             e.printStackTrace();

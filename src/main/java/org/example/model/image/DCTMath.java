@@ -5,6 +5,8 @@ public class DCTMath {
     private DCTMath() {
     }
 
+    private static final int BLOCK_SIZE = 8;
+    //
     public static final int[][] LUMA_QUANTIZATION = {
             { 16, 11, 10, 16, 24, 40, 51, 61 },
             { 12, 12, 14, 19, 26, 58, 60, 55 },
@@ -16,16 +18,21 @@ public class DCTMath {
             { 72, 92, 95, 98, 112, 100, 103, 99 }
     };
 
-    // FORWARD DCT
+
+    /**
+     *
+      * @param spatialBlock
+     * @return
+     */
     public static double[][] calculateDCT(double[][] spatialBlock) {
         double[][] frequencyBlock = new double[8][8];
 
-        for (int u = 0; u < 8; u++) {
-            for (int v = 0; v < 8; v++) {
+        for (int u = 0; u < BLOCK_SIZE; u++) {
+            for (int v = 0; v < BLOCK_SIZE; v++) {
                 double sum = 0.0;
 
-                for (int x = 0; x < 8; x++) {
-                    for (int y = 0; y < 8; y++) {
+                for (int x = 0; x < BLOCK_SIZE; x++) {
+                    for (int y = 0; y < BLOCK_SIZE; y++) {
                         // LEVEL SHIFT: Subtract 128 before the math!
                         double shiftedPixel = spatialBlock[x][y] - 128.0;
 
@@ -45,7 +52,11 @@ public class DCTMath {
         return frequencyBlock;
     }
 
-    // INVERSE DCT
+    /**
+     *
+      * @param frequencyBlock
+     * @return
+     */
     public static double[][] calculateIDCT(double[][] frequencyBlock) {
         double[][] spatialBlock = new double[8][8];
 
@@ -65,16 +76,21 @@ public class DCTMath {
                     }
                 }
 
-                // REVERSE LEVEL SHIFT: Add the 128 back!
+                // REVERSE LEVEL SHIFT: Add the 128 back
                 double pixelValue = (0.25 * sum) + 128.0;
 
-                // Clamp it just in case floating point math gets weird
+                // fix the
                 spatialBlock[x][y] = Math.max(0, Math.min(255, Math.round(pixelValue)));
             }
         }
         return spatialBlock;
     }
 
+    /**
+     *
+     * @param freqBlock
+     * @return
+     */
     public static double[][] quantize(double[][] freqBlock) {
         double[][] quantized = new double[8][8];
         for (int u = 0; u < 8; u++)
@@ -83,6 +99,11 @@ public class DCTMath {
         return quantized;
     }
 
+    /**
+     *
+     * @param quantizedBlock
+     * @return
+     */
     public static double[][] dequantize(double[][] quantizedBlock) {
         double[][] dequantized = new double[8][8];
         for (int u = 0; u < 8; u++)

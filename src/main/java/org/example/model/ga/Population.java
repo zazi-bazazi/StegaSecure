@@ -12,27 +12,50 @@ public class Population extends AbstractPopulation {
         this.adjList = new LinkedHashMap<>();
     }
 
+    /**
+     *
+     * @param chromosome
+     */
     @Override
     public void addChromosome(AbstractChromosome<?> chromosome) {
         this.adjList.putIfAbsent(chromosome, new ArrayList<>());
     }
 
+    /**
+     *
+     * @param c1
+     * @param c2
+     */
     @Override
     public void addEdge(AbstractChromosome<?> c1, AbstractChromosome<?> c2) {
         this.adjList.get(c1).add(c2);
         this.adjList.get(c2).add(c1);
     }
 
+    /**
+     *
+     * @return
+     */
     @Override
     public ArrayList<AbstractChromosome<?>> getChromosomes() {
         return new ArrayList<>(this.adjList.keySet());
     }
 
+    /**
+     *
+     * @param chromosome
+     * @return
+     */
     @Override
     public List<AbstractChromosome<?>> getNeighbors(AbstractChromosome<?> chromosome) {
         return this.adjList.getOrDefault(chromosome, new ArrayList<>());
     }
 
+    /**
+     *
+     * @param oldNode
+     * @param newNode
+     */
     @Override
     public void replaceNode(AbstractChromosome<?> oldNode, AbstractChromosome<?> newNode) {
         if (!this.adjList.containsKey(oldNode)) return;

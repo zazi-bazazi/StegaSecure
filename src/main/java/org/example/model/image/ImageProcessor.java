@@ -42,7 +42,11 @@ public class ImageProcessor {
         return Holder.INSTANCE;
     }
 
-    // Converts the full image into a Sparse Matrix
+    /**
+     *
+     * @param image
+     * @return
+     */
     public SparseDCTMatrix convertToFrequencyDomain(SpatialMatrix image) {
         int blocksX = (int) Math.ceil(image.getWidth() / 8.0);
         int blocksY = (int) Math.ceil(image.getHeight() / 8.0);
@@ -51,23 +55,20 @@ public class ImageProcessor {
         SparseDCTMatrix sparseMatrix = new SparseDCTMatrix(image.getWidth(), image.getHeight());
         int blockIndex = 0;
 
-        // Loop through the blocks
         for (int X = 0; X < blocksX; X++) {
             for (int Y = 0; Y < blocksY; Y++) {
 
-                // Calculate the actual starting pixel coordinates for this block (jump by 8)
                 int startPixelX = X * 8;
                 int startPixelY = Y * 8;
 
-                // 1. Extract a single 8x8 block from the spatial image
+                // Extract a single 8x8 block from the spatial image
                 double[][] spatialBlock = extractBlock(image, startPixelX, startPixelY);
 
-                // 2. Do the math
                 double[][] frequencyBlock = DCTMath.calculateDCT(spatialBlock);
 
                 double[][] quantizedBlock = DCTMath.quantize(frequencyBlock);
 
-                // 3. Save the results into your SparseMatrix
+                // Save the results into your SparseMatrix
                 saveBlockToSparseMatrix(sparseMatrix, quantizedBlock, blockIndex);
 
                 blockIndex++;
@@ -76,6 +77,11 @@ public class ImageProcessor {
         return sparseMatrix;
     }
 
+    /**
+     *
+     * @param frequencyMatrix
+     * @return
+     */
     public SpatialMatrix convertToSpatialDomain(SparseDCTMatrix frequencyMatrix) {
 
         SpatialMatrix stegoImage = new SpatialMatrix(frequencyMatrix.getWidth(), frequencyMatrix.getHeight());
@@ -99,10 +105,17 @@ public class ImageProcessor {
         return stegoImage;
     }
 
+    /**
+     *
+     * @param sparseMatrix
+     * @param freqBlock
+     * @param blockIndex
+     */
     private void saveBlockToSparseMatrix(SparseDCTMatrix sparseMatrix, double[][] freqBlock, int blockIndex) {
         for (int u = 0; u < 8; u++) {
             for (int v = 0; v < 8; v++) {
-                // Instantly grab the correct zig-zag index from the LUT
+
+                // zig-zag index from the LUT
                 int coeffIndex = ZIGZAG_INDEX[u][v];
 
                 sparseMatrix.setCoefficient(blockIndex, coeffIndex, freqBlock[u][v]);
@@ -110,21 +123,24 @@ public class ImageProcessor {
         }
     }
 
+    /**
+     *
+     * @param image
+     * @param startX
+     * @param startY
+     * @return
+     */
     private double[][] extractBlock(SpatialMatrix image, int startX, int startY) {
         double[][] block = new double[8][8];
 
         for (int x = 0; x < 8; x++) {
             for (int y = 0; y < 8; y++) {
 
-                // Check boundaries so we don't get an OutOfBounds exception on the edges
                 if ((startX + x) < image.getWidth() && (startY + y) < image.getHeight()) {
 
-                    // Assuming you updated SpatialMatrix to handle the grayscale math under the
-                    // hood!
                     block[x][y] = image.getGrayscalePixel(startX + x, startY + y);
 
                 } else {
-                    // Pad with 0 if we hit the edge of the image
                     block[x][y] = 0.0;
                 }
             }
@@ -132,10 +148,17 @@ public class ImageProcessor {
         return block;
     }
 
+    /**
+     *
+     * @param image
+     * @param block
+     * @param startX
+     * @param startY
+     */
     private void writeBlockToImage(SpatialMatrix image, double[][] block, int startX, int startY) {
         for (int x = 0; x < 8; x++) {
             for (int y = 0; y < 8; y++) {
-                // Check boundaries so we don't get an OutOfBounds exception on the edges
+
                 if ((startX + x) < image.getWidth() && (startY + y) < image.getHeight()) {
                     image.setYChannel(startX + x, startY + y, block[x][y]);
                 }
@@ -143,6 +166,12 @@ public class ImageProcessor {
         }
     }
 
+    /**
+     *
+     * @param matrix
+     * @param index
+     * @return
+     */
     private double[][] unpackBlock(SparseDCTMatrix matrix, int index) {
         double[][] block = new double[8][8];
 

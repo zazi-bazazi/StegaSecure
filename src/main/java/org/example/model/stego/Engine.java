@@ -6,11 +6,9 @@ import org.example.model.ga.GeneticAlgorithm;
 import org.example.model.ga.Population;
 import org.example.model.ga.abstractClasses.AbstractChromosome;
 import org.example.model.ga.abstractClasses.FitnessFunction;
-import org.example.model.image.DCTMath;
-import org.example.model.image.ImageProcessor;
-import org.example.model.image.SparseDCTMatrix;
-import org.example.model.image.SpatialMatrix;
+import org.example.model.image.*;
 
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,9 +20,6 @@ public class Engine {
     private GeneticAlgorithm ga;
     private SparseDCTMatrix frequencyDomain;
     private SpatialMatrix spatialDomain;
-
-    private static final double MINIMAL_QUALITY = 35.0;
-    private static final double PENALTY = 2.0;
 
     private record EmbeddedResult(SparseDCTMatrix matrix, int skipped) {
     }
@@ -52,13 +47,15 @@ public class Engine {
         Predicate<AbstractChromosome<?>> stopEarly = (chromosome) -> chromosome.getFitnessScore() >= 60.0;
 
         // Build pool of non-zero coefficient positions from the frequency domain
-        // so the GA never picks a position that was killed by quantization
         List<int[]> validPositions = new ArrayList<>();
         for (int block = 0; block < totalBlocks; block++) {
-            for (int coeff = 1; coeff <= 15; coeff++) {
-                double value = this.frequencyDomain.getCoefficient(block, coeff);
-                if (Math.abs(value) >= 1.0) {
-                    validPositions.add(new int[]{block, coeff});
+
+            for (DCTNode node : this.frequencyDomain.getNonZeroCoefficientsForBlock(block)) {
+                int coeff = node.getCoefficientIndex();
+
+                // Skip the DC coefficient (index 0)
+                if (coeff > 0 && Math.abs(node.getValue()) >= 1.0) {
+                    validPositions.add(new int[] { block, coeff });
                 }
             }
         }
@@ -76,6 +73,22 @@ public class Engine {
         return finalChro;
     }
 
+    /**
+     * Embeds the message into the image following the chromosome locations
+     * <p>
+     * This method iterates through the genes of the provided chromosome, using each
+     * gene's
+     * indices to locate specific DCT coefficients and modify them via parity
+     * encoding.
+     * <p>
+     * 
+     * @param secretBits the message in bits
+     * @param chromosome the chromosome used to embed the message in the image
+     * @return {@link EmbeddedResult} containing the modified Sparse DCT matrix and
+     *         the count of bits that could not be embedded due to chromosome
+     *         length.
+     * @see #parityModifier(double, char)
+     */
     private EmbeddedResult implementChromosomeToImage(String secretBits, AbstractChromosome<?> chromosome) {
         SparseDCTMatrix tempDCT = new SparseDCTMatrix(this.frequencyDomain);
 
@@ -104,13 +117,22 @@ public class Engine {
 
     /**
      * Quantized-Parseval fitness: computes PSNR without any IDCT.
-     *
+     * <p>
      * Parseval's theorem: spatial-domain SSE = frequency-domain SSE.
      * Since we modify quantized coefficients by Δq (0 or ±1), the real
      * DCT-domain change is Δq × Q[u][v], so:
-     *   SSE = Σ (Δq × Q[u][v])²
-     *   MSE = SSE / totalPixels
-     *   PSNR = 10 × log10(255² / MSE)
+     * SSE = Σ (Δq × Q[u][v])²
+     * MSE = SSE / totalPixels
+     * PSNR = 10 × log10(255² / MSE)
+     * <p>
+     * quantization table {@link DCTMath#LUMA_QUANTIZATION}
+     * </p>
+     * 
+     * @param chromosome chromosome to evaluate
+     * @param secretBits the message in bits
+     * @return calculated PSNR score, the higher the score the less visual
+     *         distortion.
+     * @see ImageMetrics#calculatePSNR(SparseDCTMatrix, String, int, double)
      */
     private double evaluateFitness(AbstractChromosome<?> chromosome, String secretBits) {
         double sse = 0.0;
@@ -125,44 +147,34 @@ public class Engine {
             double deltaQ = modified - Math.round(original); // 0 or ±1 in quantized domain
 
             // Map zig-zag index → (u,v) → quantization step Q[u][v]
-            int qStep = getQuantizationStep(gene.getCoefficientIndex());
+            // int qStep = getQuantizationStep(gene.getCoefficientIndex());
+            int qStep = DCTMath.LUMA_QUANTIZATION[ImageProcessor.ZIGZAG_U[gene
+                    .getCoefficientIndex()]][ImageProcessor.ZIGZAG_V[gene.getCoefficientIndex()]];
             sse += (deltaQ * qStep) * (deltaQ * qStep);
 
             bitIndex++;
         }
 
-        int skipped = secretBits.length() - bitIndex;
-        int totalPixels = this.frequencyDomain.getWidth() * this.frequencyDomain.getHeight();
-        double mse = sse / totalPixels;
-
-        double psnrScore;
-        if (mse == 0.0 && skipped == 0) {
-            psnrScore = Double.MAX_VALUE;
-        } else if (mse == 0.0) {
-            psnrScore = Math.max(0, MINIMAL_QUALITY - (skipped * PENALTY));
-        } else {
-            psnrScore = 10.0 * Math.log10(255.0 * 255.0 / mse);
-            if (psnrScore < MINIMAL_QUALITY || skipped > 0)
-                psnrScore /= PENALTY;
-        }
+        double psnrScore = ImageMetrics.calculatePSNR(this.frequencyDomain, secretBits, bitIndex, sse);
 
         chromosome.setFitnessScore(psnrScore);
         return psnrScore;
     }
 
     /**
-     * Maps a zig-zag coefficient index (0-63) to its JPEG quantization step value.
+     * Modifies a DCT coefficient to match the parity of the secret bit.
+     * <p>
+     * If the coefficient's LSB already matches the bit, it remains unchanged.
+     * Otherwise, it is incremented or decremented by 1 to flip the parity
+     * while minimizing visual distortion (SSE).
+     *
+     * @param coefficient The original quantized DCT coefficient.
+     * @param bit         The secret bit to embed ('0' or '1').
+     * @return The modified coefficient as a double.
      */
-    private static int getQuantizationStep(int zigzagIndex) {
-        int u = ImageProcessor.ZIGZAG_U[zigzagIndex];
-        int v = ImageProcessor.ZIGZAG_V[zigzagIndex];
-        return DCTMath.LUMA_QUANTIZATION[u][v];
-    }
-
-
-        private double parityModifier(double coefficient, char bit) {
+    private double parityModifier(double coefficient, char bit) {
         int intCoef = (int) Math.round(coefficient);
-        if ((intCoef & 1) == bit - '0') {
+        if ((intCoef % 2) == bit - '0') {
             return (double) intCoef;
         }
         if (intCoef >= 0) {
@@ -178,6 +190,17 @@ public class Engine {
         this.frequencyDomain = frequency;
     }
 
+    /**
+     * parse a text string to a binary string.
+     * <p>
+     * </p>
+     * The first 32 bits represent the total number of characters in the message
+     * Each subsequent character is encoded as a fixed-width 8-bit binary string.
+     *
+     * @param text The message to be converted.
+     * @return A bitstream String containing the length header followed by the
+     *         payload.
+     */
     public static String textToBinaryString(String text) {
         StringBuilder binary = new StringBuilder();
 
@@ -191,6 +214,16 @@ public class Engine {
         return binary.toString();
     }
 
+    /**
+     * Reconstructs a plaintext string from a binary bitstream.
+     * <p>
+     * </p>
+     * This method interprets the bitstream in 8-bit chunks, converting each
+     * back into its corresponding character representation.
+     * 
+     * @param bits bits The raw binary string (excluding the 32-bit header).
+     * @return The reconstructed plaintext message.
+     */
     private static String binaryStringToText(String bits) {
         StringBuilder text = new StringBuilder();
         for (int i = 0; i + 8 <= bits.length(); i += 8) {
@@ -200,9 +233,24 @@ public class Engine {
         return text.toString();
     }
 
-    public String decode(String stegoImagePath, AbstractChromosome<?> chromosome) {
+    /**
+     * Decodes a hidden message from a stego-image using a specific genetic path.
+     * <p>
+     * This method extracts the Least Significant Bits (LSB) from the DCT
+     * coefficients
+     * specified by the chromosome's genes. It expects a 32-bit header indicating
+     * the payload length followed by the bitstream of the message.
+     *
+     * @param stegoImagePath The file path to the image containing the hidden data.
+     * @param chromosome     The chromosome acting as the "key" to locate the hidden
+     *                       bits.
+     * @return The recovered plaintext string, or an error message if
+     *         the header is malformed or the bitstream is incomplete.
+     * @throws IllegalArgumentException if the image path is invalid or the
+     *                                  chromosome is null.
+     */
+    public String decode(File stegoImagePath, AbstractChromosome<?> chromosome) {
         try {
-            // 1. Load the stego image and convert to the frequency domain
             SpatialMatrix stegoImage = new SpatialMatrix(stegoImagePath);
             SparseDCTMatrix stegoFrequency = ImageProcessor.getInstance().convertToFrequencyDomain(stegoImage);
 
@@ -216,7 +264,6 @@ public class Engine {
                         gene.getBlockIndex(),
                         gene.getCoefficientIndex());
 
-                // Extract the LSB of the rounded coefficient
                 int intCoef = (int) Math.round(coeff);
                 int lsb = Math.abs(intCoef) & 1;
                 extractedBits.append(lsb);
@@ -238,6 +285,7 @@ public class Engine {
 
             // 4. Skip the header, decode the payload
             String payloadBits = allBits.substring(32, bitsNeeded);
+
             String recoveredText = binaryStringToText(payloadBits);
 
             System.out.println("[SUCCESS] Decoded " + charCount + " character(s): " + recoveredText);
@@ -250,7 +298,17 @@ public class Engine {
         }
     }
 
-    public String encode(String secretText, String inputImagePath, String outputPath) throws Exception {
+    /**
+     * Encodes the plain Text into the cover image using Steganoraphy.
+     * 
+     * @param secretText     The plain Text message to be hidden
+     * @param inputImagePath The cover image.
+     * @return A {@link BufferedImage} containing the hidden data
+     * @throws IOException If the image file cannot be read or processed.
+     * @see #geneticAlgorithmManager(String, int)
+     * @see #implementChromosomeToImage(String, AbstractChromosome)
+     */
+    public BufferedImage encode(String secretText, File inputImagePath) throws IOException {
         String secretBits = textToBinaryString(secretText);
         System.out.println("\n[INFO] Bits to hide: " + secretBits.length() + " bits.");
 
@@ -267,11 +325,32 @@ public class Engine {
         System.out.println("\n[INFO] Starting Genetic Algorithm Evolution...");
         AbstractChromosome<?> winningChromosome = geneticAlgorithmManager(secretBits, totalBlocks);
 
-        return buildAndSaveStegoImage(winningChromosome, secretBits, outputPath);
+        // return buildAndSaveStegoImage(winningChromosome, secretBits, outputPath);
+
+        EmbeddedResult result = this.implementChromosomeToImage(secretBits, winningChromosome);
+
+        SparseDCTMatrix finalDCT = result.matrix();
+        int skipped = result.skipped();
+
+        if (skipped > 0) {
+            System.out.println(
+                    "[WARNING] The best chromosome still hit " + skipped + " zeroes. Message might be corrupted.");
+        } else {
+            System.out.println("[SUCCESS] All " + secretBits.length() + " bits locked perfectly into the frequencies!");
+        }
+
+        System.out.println("[INFO] Running Inverse DCT to rebuild spatial pixels...");
+        SpatialMatrix stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(finalDCT);
+
+        // Copy the original Cb/Cr channels so the stego image preserves color
+        stegoImage.copyChromaFrom(this.spatialDomain);
+
+        return stegoImage.saveImage();
 
     }
 
-    public String buildAndSaveStegoImage(AbstractChromosome<?> bestChromosome, String secretBits, String outputPath) {
+    @Deprecated
+    public String buildAndSaveStegoImage(AbstractChromosome<?> bestChromosome, String secretBits) {
         System.out.println("\n[INFO] Generating final Master Matrix...");
 
         EmbeddedResult result = this.implementChromosomeToImage(secretBits, bestChromosome);
@@ -295,6 +374,7 @@ public class Engine {
         File imageFile = null;
         try {
             // Save PNG — lossless, preserves the embedded message
+            String outputPath = "";
             imageFile = stegoImage.saveImage(outputPath, "png");
 
             // Save JPEG preview — uses Java's built-in encoder (no external libraries)
@@ -318,12 +398,23 @@ public class Engine {
         return imageFile.getAbsolutePath();
     }
 
+    /**
+     * Save the Chromosome to a file.
+     * <p>
+     * </p>
+     * Each gene will show in a new line in this format
+     * {@code BlockIndex, CoefficientIndex}
+     * 
+     * @param chromosome The optimized chromosome selected by the Genetic Algorithm.
+     * @param keyFile    The destination file.
+     * @throws IOException IOException If the file cannot be created or written to.
+     */
     public void saveChromosomeKey(AbstractChromosome<?> chromosome, File keyFile) throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(keyFile))) {
-            writer.write("# StegaSecure Key File — do not edit");
-            writer.newLine();
-            writer.write("# Format: blockIndex,coefficientIndex (one gene per line)");
-            writer.newLine();
+            // writer.write("# StegaSecure Key File — do not edit");
+            // writer.newLine();
+            // writer.write("# Format: blockIndex,coefficientIndex (one gene per line)");
+            // writer.newLine();
 
             for (int i = 0; i < chromosome.getNumGenes(); i++) {
                 Gene gene = (Gene) chromosome.getGeneByIndex(i);
@@ -334,15 +425,30 @@ public class Engine {
         System.out.println(">>> Key file saved at: " + keyFile.getAbsolutePath());
     }
 
+    /**
+     * Reconstructs a chromosome from a serialized key file.
+     * <p>
+     * </p>
+     * File is expected to be in a format that each line represents a single gene in
+     * this format {@code blockIndex, coefficientIndex}
+     * 
+     * @param keyFile file with the chromosome data
+     * @return {@link AbstractChromosome} The chromosome containing the data from
+     *         the file.
+     * @throws IOException           If the file cannot be read or contains
+     *                               malformed lines.
+     * @throws NumberFormatException If a coordinate in the key file is not a valid
+     *                               integer.
+     */
     public AbstractChromosome<?> loadChromosomeKey(File keyFile) throws IOException {
-        Chromosome chromosome = new Chromosome();
+        AbstractChromosome<?> chromosome = new Chromosome();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(keyFile))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 // Skip comment lines
-                if (line.startsWith("#") || line.isBlank())
-                    continue;
+                // if (line.startsWith("#") || line.isBlank())
+                // continue;
 
                 String[] parts = line.split(",");
                 if (parts.length != 2) {

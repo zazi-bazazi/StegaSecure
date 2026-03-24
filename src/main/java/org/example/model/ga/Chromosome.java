@@ -40,8 +40,12 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
         return this.chromosomeGenes.get(i);
     }
 
+    /**
+     *
+     * @param params
+     * @return
+     */
     @Override
-    @SuppressWarnings("unchecked")
     public AbstractChromosome<ArrayList<AbstractGene<?>>> generateChromosomeRand(Object... params) {
         if (params.length < 2) {
             throw new IllegalStateException("MISSING PARAMS");
@@ -76,6 +80,11 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
         return newChromo;
     }
 
+    /**
+     *
+     * @param params
+     * @return
+     */
     @Override
     public AbstractChromosome<ArrayList<AbstractGene<?>>> generateChromosomeMath(Object... params) {
         if (params.length != 2) {
@@ -111,6 +120,12 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
         return newChromo;
     }
 
+    /**
+     *
+     * @param chro1
+     * @param chro2
+     * @param params
+     */
     @Override
     public void crossover(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2, Object... params) {
         for (int i = 0; i < chro1.getNumGenes(); i++) {
@@ -141,13 +156,17 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
 
     }
 
+    /**
+     *
+     * @param params
+     */
     @Override
     @SuppressWarnings("unchecked")
     public void mutate(Object... params) {
         int totalBlocks = (int) params[0];
         double mutationRate = (double) params[1];
         List<int[]> validPositions = (params.length > 2 && params[2] != null) ? (List<int[]>) params[2] : null;
-
+        boolean lessThan50Attempts = true;
         for (int i = 0; i < this.getNumGenes(); i++) {
             Gene currentGene = (Gene) this.getGeneByIndex(i);
 
@@ -174,9 +193,9 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
 
                 if (attempts > 50) {
                     candidate = currentGene;
-                    break;
+                    lessThan50Attempts = false;
                 }
-            } while (this.getGenes().contains(candidate));
+            } while (this.getGenes().contains(candidate) && lessThan50Attempts);
 
             currentGene.setBlockIndex(candidate.getBlockIndex());
             currentGene.setValue(candidate.getCoefficientIndex());

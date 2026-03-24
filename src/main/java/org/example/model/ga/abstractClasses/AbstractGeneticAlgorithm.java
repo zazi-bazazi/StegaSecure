@@ -1,5 +1,8 @@
 package org.example.model.ga.abstractClasses;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Random;
 import java.util.function.Predicate;
 
@@ -27,6 +30,13 @@ public abstract class AbstractGeneticAlgorithm {
         this.maxGenerations = maxGenerations;
     }
 
+    /**
+     *
+     * @param emptyPop
+     * @param emptyChro
+     * @param stoppingCondition
+     * @return
+     */
     public AbstractChromosome<?> evolve(AbstractPopulation emptyPop, AbstractChromosome<?> emptyChro,
             Predicate<AbstractChromosome<?>> stoppingCondition) {
 
@@ -82,7 +92,10 @@ public abstract class AbstractGeneticAlgorithm {
         return bestChromosome;
     }
 
-    // Helper method to scan your adjList and find the highest score
+    /**
+     *
+     * @return
+     */
     protected AbstractChromosome<?> getBestChromosome() {
         AbstractChromosome<?> best = null;
         for (AbstractChromosome<?> chromo : population.getChromosomes()) {
@@ -117,4 +130,19 @@ public abstract class AbstractGeneticAlgorithm {
 
     protected abstract void restartPopulation(AbstractChromosome<?> emptyChro);
 
+    /**
+     *
+     * @param filename
+     */
+    public void savePopulationToFile(String filename) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
+            for (int i = 0; i < this.populationSize; i++) {
+                writer.write("Indiv " + i + ": " + this.population.getChromosomes().get(i).toString());
+                writer.newLine();
+            }
+            System.out.println("Population successfully saved to " + filename);
+        } catch (IOException e) {
+            System.err.println("Error writing to file: " + e.getMessage());
+        }
+    }
 }

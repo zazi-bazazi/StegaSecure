@@ -18,9 +18,13 @@ public class SpatialMatrix {
     private final double[][] cbChannel;
     private final double[][] crChannel;
 
-    // Constructor 1: Load an existing image from disk and convert RGB → YCbCr once
-    public SpatialMatrix(String filePath) throws IOException {
-        File file = new File(filePath);
+    /**
+     * Constructs a SpatialMatrix by loading an image file from disk.
+     * @param file file The source image file
+     * @throws IOException If the file cannot be read or is not a valid image.
+     */
+    public SpatialMatrix(File file) throws IOException {
+
         BufferedImage image = ImageIO.read(file);
         this.width = image.getWidth();
         this.height = image.getHeight();
@@ -43,7 +47,14 @@ public class SpatialMatrix {
         }
     }
 
-    // Constructor 2: Create a blank image (all channels zeroed)
+    /**
+     * Initializes a blank SpatialMatrix with specific dimensions.
+     * <p>
+     * The Chrominance channels (Cb and Cr) are initialized to 128.0
+     * (neutral gray) to ensure valid color reconstruction.
+     * @param width The width of the image in pixels.
+     * @param height The height of the image in pixels.
+     */
     public SpatialMatrix(int width, int height) {
         this.width = width;
         this.height = height;
@@ -60,7 +71,10 @@ public class SpatialMatrix {
         }
     }
 
-    // Constructor 3: Deep copy
+    /**
+     * Creates a deep copy of an existing SpatialMatrix.
+     * @param original The Image to copy
+     */
     public SpatialMatrix(SpatialMatrix original) {
         this.width = original.width;
         this.height = original.height;
@@ -83,22 +97,34 @@ public class SpatialMatrix {
         return height;
     }
 
-    // ---- Y channel access (used by DCT / steganography) ----
-
+    /**
+     * Retrieves the Luminance (Y) value of a specific pixel.
+     *
+     * @param x The x-coordinate.
+     * @param y The y-coordinate.
+     * @return  The grayscale-equivalent value (0.0 to 255.0).
+     */
     public double getGrayscalePixel(int x, int y) {
         return yChannel[x][y];
     }
 
+    /**
+     * Updates the Luminance (Y) value of a specific pixel.
+     * Values are automatically clamped to the [0, 255] range.
+     *
+     * @param x     The x-coordinate.
+     * @param y     The y-coordinate.
+     * @param value The new luminance value.
+     */
     public void setYChannel(int x, int y, double value) {
         yChannel[x][y] = Math.max(0, Math.min(255, value));
     }
 
-    // ---- Conversion back to RGB and saving ----
-
     /**
      * Converts the YCbCr channels to a BufferedImage (single conversion on save).
+     * @return {@link BufferedImage}
      */
-    private BufferedImage toBufferedImage() {
+    public BufferedImage saveImage() {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
         for (int x = 0; x < width; x++) {
@@ -117,6 +143,7 @@ public class SpatialMatrix {
         return image;
     }
 
+    @Deprecated
     public File saveImage(String directoryPath, String format) throws IOException {
         File directory = new File(directoryPath);
 
@@ -134,7 +161,7 @@ public class SpatialMatrix {
         File outputFile = new File(directory, fileName);
 
         // 4. Convert YCbCr → RGB once, then write to disk
-        BufferedImage image = toBufferedImage();
+        BufferedImage image = saveImage();
         ImageIO.write(image, format, outputFile);
 
         System.out.println(">>> Image physically created at: " + outputFile.getAbsolutePath());
@@ -142,8 +169,13 @@ public class SpatialMatrix {
     }
 
     /**
-     * Copies the Cb and Cr channels from another SpatialMatrix.
-     * Use this after IDCT reconstruction to restore original color.
+     * Restores the color channels from a source matrix.
+     * <p>
+     * This is crucial after steganographic reconstruction, as the Genetic Algorithm
+     * only processes the Y channel. This method re-attaches the original color.
+     * </p>
+     *
+     * @param original The source matrix containing the original Cb and Cr data.
      */
     public void copyChromaFrom(SpatialMatrix original) {
         int w = Math.min(this.width, original.width);
@@ -154,6 +186,11 @@ public class SpatialMatrix {
         }
     }
 
+    /**
+     * Clamps an integer value to the valid range of an unsigned 8-bit byte.
+     * @param value The value to be restricted.
+     * @return      The value constrained between 0 and 255 inclusive.
+     */
     private static int clamp(int value) {
         return Math.max(0, Math.min(255, value));
     }

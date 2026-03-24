@@ -5,6 +5,9 @@ import org.example.model.ga.abstractClasses.AbstractGene;
 
 import java.util.Objects;
 
+/**
+ *
+ */
 public class Gene extends AbstractGene<Integer> {
     private static final int COEFF_MIN = 10;
     private static final int COEFF_MAX = 50;

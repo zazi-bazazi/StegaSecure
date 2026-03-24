@@ -28,6 +28,9 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         this.tournamentSize = 5;
     }
 
+    /**
+     *
+     */
     @Override
     public void runGeneration() {
         System.out.println("[INFO] Started " + (new Throwable()).getStackTrace()[0].getMethodName());
@@ -36,6 +39,12 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         }
     }
 
+    /**
+     *
+     * @param emptyPop
+     * @param emptyChro
+     * @param params
+     */
     @Override
     public void initializePopulation(AbstractPopulation emptyPop, AbstractChromosome<?> emptyChro, Object... params) {
         System.out.println("[INFO] Started " + (new Throwable()).getStackTrace()[0].getMethodName());
@@ -45,6 +54,8 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
             AbstractChromosome<?> newChromo = emptyChro.generateChromosomeRand(this.totalBlocks, this.messageLength, this.validPositions);
             this.population.addChromosome(newChromo);
         }
+
+        this.savePopulationToFile("D:\\OneDrive\\תמונות\\PopulationFile.txt");
 
         for (int i = 0; i < this.populationSize; i++) {
             AbstractChromosome<?> current = this.population.getChromosomes().get(i);
@@ -56,6 +67,10 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         }
     }
 
+    /**
+     *
+     * @param params
+     */
     @Override
     public void nextGeneration(Object... params) {
         AbstractChromosome<?> parent1 = select();
@@ -75,6 +90,13 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         }
     }
 
+    /**
+     *
+     * @param chromosome1
+     * @param chromosome2
+     * @param params
+     * @return
+     */
     @Override
     protected AbstractChromosome<?> crossover(AbstractChromosome<?> chromosome1, AbstractChromosome<?> chromosome2,
             Object... params) {
@@ -83,11 +105,21 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         return newChro;
     }
 
+    /**
+     *
+     * @param chromosome
+     * @param params
+     */
     @Override
     protected void mutate(AbstractChromosome<?> chromosome, Object... params) {
         chromosome.mutate(this.totalBlocks, this.mutationRate);
     }
 
+    /**
+     *
+     * @param params
+     * @return
+     */
     @Override
     protected AbstractChromosome<?> select(Object... params) {
         List<AbstractChromosome<?>> allChromosomes = this.population.getChromosomes();
@@ -127,6 +159,10 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
     // return best; // Return the winner to act as Parent 1 or Parent 2
     // }
 
+    /**
+     *
+     * @param emptyChro
+     */
     @Override
     protected void restartPopulation(AbstractChromosome<?> emptyChro) {
         List<AbstractChromosome<?>> all = this.population.getChromosomes();

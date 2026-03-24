@@ -6,20 +6,26 @@ import java.util.List;
 
 /**
  * Graph-structured representation of quantized DCT coefficients.
- *
+ * <p>
  * Each DCT block is a NODE that stores its non-zero coefficients.
- * EDGES connect spatially adjacent blocks (4-connected grid: up, down, left, right).
- *
+ * EDGES connect spatially adjacent blocks (4-connected grid: up, down, left,
+ * right).
+ * <p>
  * This dual structure supports both:
- *   - Coefficient access: getCoefficient(block, index) / setCoefficient(...)
- *   - Spatial traversal: getNeighborBlocks(block) for graph-aware algorithms
+ * - Coefficient access: getCoefficient(block, index) / setCoefficient(...)
+ * - Spatial traversal: getNeighborBlocks(block) for graph-aware algorithms
  */
 public class SparseDCTMatrix {
 
-    // ---- Node data: each block's non-zero DCT coefficients ----
+    /**
+     * Node data: A list for each block containing only its non-zero coefficients.
+     */
     private final ArrayList<ArrayList<DCTNode>> blockCoefficients;
 
-    // ---- Adjacency list: spatial neighbor edges between blocks ----
+    /**
+     * Adjacency list representing spatial neighbor edges between 8 &times; 8
+     * blocks.
+     */
     private final ArrayList<List<Integer>> adjacencyList;
 
     private final int totalBlocks;
@@ -28,6 +34,12 @@ public class SparseDCTMatrix {
     private final int imageWidth;
     private final int imageHeight;
 
+    /**
+     * Constructs a new SparseDCTMatrix based on image dimensions.
+     * 
+     * @param width  The width of the original image in pixels.
+     * @param height The height of the original image in pixels.
+     */
     public SparseDCTMatrix(int width, int height) {
         this.imageHeight = height;
         this.imageWidth = width;
@@ -46,9 +58,36 @@ public class SparseDCTMatrix {
         for (int i = 0; i < totalBlocks; i++) {
             adjacencyList.add(new ArrayList<>());
         }
-        buildSpatialAdjacency();
+
+        for (int bx = 0; bx < blocksX; bx++) {
+            for (int by = 0; by < blocksY; by++) {
+                int current = bx * blocksY + by;
+
+                // Right neighbor
+                if (bx + 1 < blocksX) {
+                    int right = (bx + 1) * blocksY + by;
+                    adjacencyList.get(current).add(right);
+                    adjacencyList.get(right).add(current);
+                }
+                // Down neighbor
+                if (by + 1 < blocksY) {
+                    int down = bx * blocksY + (by + 1);
+                    adjacencyList.get(current).add(down);
+                    adjacencyList.get(down).add(current);
+                }
+            }
+        }
     }
 
+    /**
+     * Deep-copy constructor.
+     * <p>
+     * Creates new instances of the coefficient data while sharing the immutable
+     * spatial adjacency structure to save memory.
+     * </p>
+     * 
+     * @param original The source SparseDCTMatrix to copy.
+     */
     public SparseDCTMatrix(SparseDCTMatrix original) {
         this.imageWidth = original.imageWidth;
         this.imageHeight = original.imageHeight;
@@ -71,31 +110,14 @@ public class SparseDCTMatrix {
         this.adjacencyList = original.adjacencyList;
     }
 
-    // ---- Adjacency graph construction ----
-
-    private void buildSpatialAdjacency() {
-        for (int bx = 0; bx < blocksX; bx++) {
-            for (int by = 0; by < blocksY; by++) {
-                int current = bx * blocksY + by;
-
-                // Right neighbor
-                if (bx + 1 < blocksX) {
-                    int right = (bx + 1) * blocksY + by;
-                    adjacencyList.get(current).add(right);
-                    adjacencyList.get(right).add(current);
-                }
-                // Down neighbor
-                if (by + 1 < blocksY) {
-                    int down = bx * blocksY + (by + 1);
-                    adjacencyList.get(current).add(down);
-                    adjacencyList.get(down).add(current);
-                }
-            }
-        }
-    }
-
-    // ---- Coefficient access (node data) ----
-
+    /**
+     * Updates a coefficient's value.
+     * If the value is 0.0, the node is removed from the sparse list.
+     * 
+     * @param blockIndex The index of the 8 &times; 8 block.
+     * @param coeffIndex The zig-zag index of the coefficient (0-63).
+     * @param value      The new value to set.
+     */
     public void setCoefficient(int blockIndex, int coeffIndex, double value) {
         ArrayList<DCTNode> blockList = blockCoefficients.get(blockIndex);
 
@@ -117,6 +139,14 @@ public class SparseDCTMatrix {
         }
     }
 
+    /**
+     * Retrieves a coefficient's value.
+     * Returns 0.0 if the coefficient is not explicitly stored.
+     * 
+     * @param blockIndex The index of the 8 &times; 8 block.
+     * @param coeffIndex The zig-zag index of the coefficient (0-63).
+     * @return The value of the coefficient.
+     */
     public double getCoefficient(int blockIndex, int coeffIndex) {
         ArrayList<DCTNode> blockList = blockCoefficients.get(blockIndex);
         for (DCTNode node : blockList) {
@@ -127,21 +157,25 @@ public class SparseDCTMatrix {
         return 0.0;
     }
 
+    /**
+     * Retrieves all stored (non-zero) coefficients for a specific block.
+     * 
+     * @param blockIndex The index of the block.
+     * @return An ArrayList of {@link DCTNode} objects.
+     */
     public ArrayList<DCTNode> getNonZeroCoefficientsForBlock(int blockIndex) {
         return blockCoefficients.get(blockIndex);
     }
 
-    // ---- Graph traversal (adjacency) ----
-
     /**
-     * Returns the block indices that are spatially adjacent to the given block
-     * (up, down, left, right on the image grid).
+     * Returns the block indices that are spatially adjacent to the given block.
+     * 
+     * @param blockIndex The center block index.
+     * @return An unmodifiable list of neighbor indices.
      */
     public List<Integer> getNeighborBlocks(int blockIndex) {
         return Collections.unmodifiableList(adjacencyList.get(blockIndex));
     }
-
-    // ---- Dimensions ----
 
     public int getWidth() {
         return this.imageWidth;

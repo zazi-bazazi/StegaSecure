@@ -192,7 +192,7 @@ public class DecodeController {
             Parent root = loader.load();
 
             Stage stage = getStage();
-            Scene scene = new Scene(root, 750, 520);
+            Scene scene = new Scene(root, 850, 520);
             scene.getStylesheets().add(
                     getClass().getResource("/org/example/view/styles.css").toExternalForm());
             stage.setScene(scene);

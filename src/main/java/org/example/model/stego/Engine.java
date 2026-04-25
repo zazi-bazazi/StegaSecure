@@ -18,10 +18,10 @@ public class Engine {
     private static Engine instance = null;
 
     private GeneticAlgorithm ga;
-    private SparseDCTMatrix frequencyDomain;
-    private SpatialMatrix spatialDomain;
+    private FrequencyDomain frequencyDomain;
+    private SpatialDomain spatialDomain;
 
-    private record EmbeddedResult(SparseDCTMatrix matrix, int skipped) {
+    private record EmbeddedResult(FrequencyDomain matrix, int skipped) {
     }
 
     public record FilesRecord(BufferedImage stegoImage, String keyFileInString) {
@@ -115,7 +115,7 @@ public class Engine {
      * @see #parityModifier(double, char)
      */
     private EmbeddedResult implementChromosomeToImage(String secretBits, AbstractChromosome<?> chromosome) {
-        SparseDCTMatrix tempDCT = new SparseDCTMatrix(this.frequencyDomain);
+        FrequencyDomain tempDCT = new FrequencyDomain(this.frequencyDomain);
 
         int bitIndex = 0;
 
@@ -157,7 +157,7 @@ public class Engine {
      * @param secretBits the message in bits
      * @return calculated PSNR score, the higher the score the less visual
      *         distortion.
-     * @see ImageMetrics#calculatePSNR(SparseDCTMatrix, String, int, double)
+     * @see ImageMetrics#calculatePSNR(FrequencyDomain, String, int, double)
      */
     private double evaluateFitness(AbstractChromosome<?> chromosome, String secretBits) {
         double sse = 0.0;
@@ -211,7 +211,7 @@ public class Engine {
         }
     }
 
-    public void loadCoverImage(SpatialMatrix spatial, SparseDCTMatrix frequency) {
+    public void loadCoverImage(SpatialDomain spatial, FrequencyDomain frequency) {
         this.spatialDomain = spatial;
         this.frequencyDomain = frequency;
     }
@@ -277,8 +277,8 @@ public class Engine {
      */
     public String decode(File stegoImagePath, AbstractChromosome<?> chromosome) {
         try {
-            SpatialMatrix stegoImage = new SpatialMatrix(stegoImagePath);
-            SparseDCTMatrix stegoFrequency = ImageProcessor.getInstance().convertToFrequencyDomain(stegoImage);
+            SpatialDomain stegoImage = new SpatialDomain(stegoImagePath);
+            FrequencyDomain stegoFrequency = ImageProcessor.getInstance().convertToFrequencyDomain(stegoImage);
 
             StringBuilder extractedBits = new StringBuilder();
 
@@ -333,15 +333,15 @@ public class Engine {
      * @throws IOException If the image file cannot be read or processed.
      * @see #geneticAlgorithmManager(String, int)
      * @see #implementChromosomeToImage(String, AbstractChromosome)
-     * @see ImageProcessor#convertToFrequencyDomain(SpatialMatrix)  
+     * @see ImageProcessor#convertToFrequencyDomain(SpatialDomain)
      */
     public FilesRecord encode(String secretText, File inputImagePath) throws Exception {
         String secretBits = textToBinaryString(secretText);
         System.out.println("\n[INFO] Bits to hide: " + secretBits.length() + " bits.");
 
         System.out.println("[INFO] Loading image and converting to Frequency Domain...");
-        SpatialMatrix spatialImage = new SpatialMatrix(inputImagePath);
-        SparseDCTMatrix frequencyImage = ImageProcessor.getInstance().convertToFrequencyDomain(spatialImage);
+        SpatialDomain spatialImage = new SpatialDomain(inputImagePath);
+        FrequencyDomain frequencyImage = ImageProcessor.getInstance().convertToFrequencyDomain(spatialImage);
 
         int totalBlocks = (int) Math.ceil(spatialImage.getWidth() / 8.0)
                 * (int) Math.ceil(spatialImage.getHeight() / 8.0);
@@ -356,7 +356,7 @@ public class Engine {
 
         EmbeddedResult result = this.implementChromosomeToImage(secretBits, winningChromosome);
 
-        SparseDCTMatrix finalDCT = result.matrix();
+        FrequencyDomain finalDCT = result.matrix();
         int skipped = result.skipped();
 
         if (skipped > 0) {
@@ -367,7 +367,7 @@ public class Engine {
         }
 
         System.out.println("[INFO] Running Inverse DCT to rebuild spatial pixels...");
-        SpatialMatrix stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(finalDCT);
+        SpatialDomain stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(finalDCT);
 
         // Copy the original Cb/Cr channels so the stego image preserves color
         stegoImage.copyChromaFrom(this.spatialDomain);
@@ -382,7 +382,7 @@ public class Engine {
 
         EmbeddedResult result = this.implementChromosomeToImage(secretBits, bestChromosome);
 
-        SparseDCTMatrix finalDCT = result.matrix();
+        FrequencyDomain finalDCT = result.matrix();
         int skipped = result.skipped();
 
         if (skipped > 0) {
@@ -393,7 +393,7 @@ public class Engine {
         }
 
         System.out.println("[INFO] Running Inverse DCT to rebuild spatial pixels...");
-        SpatialMatrix stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(finalDCT);
+        SpatialDomain stegoImage = ImageProcessor.getInstance().convertToSpatialDomain(finalDCT);
 
         // Copy the original Cb/Cr channels so the stego image preserves color
         stegoImage.copyChromaFrom(this.spatialDomain);

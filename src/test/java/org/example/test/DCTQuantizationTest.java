@@ -2,8 +2,6 @@ package org.example.test;
 
 import org.example.model.image.DCTMath;
 import org.example.model.image.ImageProcessor;
-import org.example.model.image.SparseDCTMatrix;
-import org.example.model.image.SpatialMatrix;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

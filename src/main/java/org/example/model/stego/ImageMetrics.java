@@ -1,7 +1,7 @@
 package org.example.model.stego;
 
-import org.example.model.image.SparseDCTMatrix;
-import org.example.model.image.SpatialMatrix;
+import org.example.model.image.FrequencyDomain;
+import org.example.model.image.SpatialDomain;
 
 public class ImageMetrics {
 
@@ -13,14 +13,14 @@ public class ImageMetrics {
     }
 
     @Deprecated
-    public static double calculatePSNR(SpatialMatrix original, SpatialMatrix stego) {
+    public static double calculatePSNR(SpatialDomain original, SpatialDomain stego) {
         double mse = calculateMSE(original, stego);
         if (mse == 0.0)
             return Double.MAX_VALUE;
         return 20.0 * Math.log10(MAX_PIXEL_VALUE / Math.sqrt(mse));
     }
 
-    private static double calculateMSE(SpatialMatrix original, SpatialMatrix stego) {
+    private static double calculateMSE(SpatialDomain original, SpatialDomain stego) {
         double sum_sq = 0;
 
         for (int i = 0; i < original.getWidth(); i++) {
@@ -35,7 +35,7 @@ public class ImageMetrics {
         return sum_sq / (original.getWidth() * original.getHeight());
     }
 
-    public static double calculatePSNR(SparseDCTMatrix frequencyDomain, String secretBits, int bitIndex, double sse) {
+    public static double calculatePSNR(FrequencyDomain frequencyDomain, String secretBits, int bitIndex, double sse) {
         int skipped = secretBits.length() - bitIndex;
         int totalPixels = frequencyDomain.getWidth() * frequencyDomain.getHeight();
         double mse = sse / totalPixels;

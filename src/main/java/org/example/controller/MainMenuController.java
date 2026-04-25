@@ -37,7 +37,7 @@ public class MainMenuController {
             Parent root = loader.load();
 
             Stage stage = (Stage) btnEncode.getScene().getWindow();
-            Scene scene = new Scene(root, 750, 520);
+            Scene scene = new Scene(root, 850, 520);
             scene.getStylesheets().add(
                     getClass().getResource("/org/example/view/styles.css").toExternalForm());
             stage.setScene(scene);

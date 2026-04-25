@@ -1,17 +1,17 @@
 package org.example.test;
 
-import org.example.model.image.SparseDCTMatrix;
+import org.example.model.image.FrequencyDomain;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class SparseDCTMatrixTest {
+public class FrequencyDomainTest {
 
     @Test
     public void testSetAndGetCoefficient() {
-        SparseDCTMatrix matrix = new SparseDCTMatrix(16, 16); // 2x2 blocks
+        FrequencyDomain matrix = new FrequencyDomain(16, 16); // 2x2 blocks
 
         matrix.setCoefficient(0, 5, 42.0);
         matrix.setCoefficient(0, 10, -7.5);
@@ -26,7 +26,7 @@ public class SparseDCTMatrixTest {
 
     @Test
     public void testSetCoefficientOverwrite() {
-        SparseDCTMatrix matrix = new SparseDCTMatrix(8, 8); // 1 block
+        FrequencyDomain matrix = new FrequencyDomain(8, 8); // 1 block
 
         matrix.setCoefficient(0, 5, 10.0);
         assertEquals(10.0, matrix.getCoefficient(0, 5), 0.001);
@@ -43,7 +43,7 @@ public class SparseDCTMatrixTest {
 
     @Test
     public void testZeroCoefficientNotStored() {
-        SparseDCTMatrix matrix = new SparseDCTMatrix(8, 8);
+        FrequencyDomain matrix = new FrequencyDomain(8, 8);
 
         matrix.setCoefficient(0, 5, 0.0);
         assertEquals(0, matrix.getNonZeroCoefficientsForBlock(0).size(),
@@ -54,11 +54,11 @@ public class SparseDCTMatrixTest {
 
     @Test
     public void testCopyConstructorDeepCopy() {
-        SparseDCTMatrix original = new SparseDCTMatrix(16, 16);
+        FrequencyDomain original = new FrequencyDomain(16, 16);
         original.setCoefficient(0, 1, 50.0);
         original.setCoefficient(3, 7, -20.0);
 
-        SparseDCTMatrix copy = new SparseDCTMatrix(original);
+        FrequencyDomain copy = new FrequencyDomain(original);
 
         // Copy should have the same values
         assertEquals(50.0, copy.getCoefficient(0, 1), 0.001);
@@ -75,7 +75,7 @@ public class SparseDCTMatrixTest {
     @Test
     public void testSpatialAdjacency4Connected() {
         // 3x3 grid of blocks = 24x24 image
-        SparseDCTMatrix matrix = new SparseDCTMatrix(24, 24);
+        FrequencyDomain matrix = new FrequencyDomain(24, 24);
 
         // Block layout (blocksX=3, blocksY=3):
         // index = bx * blocksY + by
@@ -105,7 +105,7 @@ public class SparseDCTMatrixTest {
     @Test
     public void testSingleBlockNoNeighbors() {
         // 1x1 grid = single 8x8 block
-        SparseDCTMatrix matrix = new SparseDCTMatrix(8, 8);
+        FrequencyDomain matrix = new FrequencyDomain(8, 8);
 
         List<Integer> neighbors = matrix.getNeighborBlocks(0);
         assertEquals(0, neighbors.size(), "Single block should have no neighbors.");
@@ -115,7 +115,7 @@ public class SparseDCTMatrixTest {
 
     @Test
     public void testDimensions() {
-        SparseDCTMatrix matrix = new SparseDCTMatrix(100, 200);
+        FrequencyDomain matrix = new FrequencyDomain(100, 200);
 
         assertEquals(100, matrix.getWidth());
         assertEquals(200, matrix.getHeight());

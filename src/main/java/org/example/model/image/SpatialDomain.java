@@ -10,7 +10,7 @@ import java.io.IOException;
  * RGB is converted to YCbCr once on load; all processing happens on the Y channel.
  * YCbCr is converted back to RGB once on save.
  */
-public class SpatialMatrix {
+public class SpatialDomain {
     private final int width;
     private final int height;
 
@@ -27,7 +27,7 @@ public class SpatialMatrix {
      * @param file file The source image file
      * @throws IOException If the file cannot be read or is not a valid image.
      */
-    public SpatialMatrix(File file) throws IOException {
+    public SpatialDomain(File file) throws IOException {
 
         BufferedImage image = ImageIO.read(file);
         this.width = image.getWidth();
@@ -59,7 +59,7 @@ public class SpatialMatrix {
      * @param width The width of the image in pixels.
      * @param height The height of the image in pixels.
      */
-    public SpatialMatrix(int width, int height) {
+    public SpatialDomain(int width, int height) {
         this.width = width;
         this.height = height;
         this.yChannel = new double[width][height];
@@ -79,7 +79,7 @@ public class SpatialMatrix {
      * Creates a deep copy of an existing SpatialMatrix.
      * @param original The Image to copy
      */
-    public SpatialMatrix(SpatialMatrix original) {
+    public SpatialDomain(SpatialDomain original) {
         this.width = original.width;
         this.height = original.height;
         this.yChannel = new double[width][height];
@@ -181,7 +181,7 @@ public class SpatialMatrix {
      *
      * @param original The source matrix containing the original Cb and Cr data.
      */
-    public void copyChromaFrom(SpatialMatrix original) {
+    public void copyChromaFrom(SpatialDomain original) {
         int w = Math.min(this.width, original.width);
         int h = Math.min(this.height, original.height);
         for (int x = 0; x < w; x++) {

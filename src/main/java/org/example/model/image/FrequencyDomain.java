@@ -15,7 +15,7 @@ import java.util.List;
  * - Coefficient access: getCoefficient(block, index) / setCoefficient(...)
  * - Spatial traversal: getNeighborBlocks(block) for graph-aware algorithms
  */
-public class SparseDCTMatrix {
+public class FrequencyDomain {
 
     /**
      * Node data: A list for each block containing only its non-zero coefficients.
@@ -40,7 +40,7 @@ public class SparseDCTMatrix {
      * @param width  The width of the original image in pixels.
      * @param height The height of the original image in pixels.
      */
-    public SparseDCTMatrix(int width, int height) {
+    public FrequencyDomain(int width, int height) {
         this.imageHeight = height;
         this.imageWidth = width;
         this.blocksX = (int) Math.ceil(width / 8.0);
@@ -88,7 +88,7 @@ public class SparseDCTMatrix {
      * 
      * @param original The source SparseDCTMatrix to copy.
      */
-    public SparseDCTMatrix(SparseDCTMatrix original) {
+    public FrequencyDomain(FrequencyDomain original) {
         this.imageWidth = original.imageWidth;
         this.imageHeight = original.imageHeight;
         this.blocksX = original.blocksX;

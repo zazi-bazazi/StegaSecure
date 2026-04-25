@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.example.controller.EncodeController"
+      spacing="10">
+
+    <padding><Insets top="16" bottom="16" left="24" right="24"/></padding>
+
+    <!-- Top: Back + Title -->
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <Button text="← Back" onAction="#onBack"/>
+        <Label text="Encode" styleClass="title-label"/>
+    </HBox>
+
+    <!-- Main horizontal layout -->
+    <HBox spacing="20" VBox.vgrow="ALWAYS">
+
+        <!-- LEFT COLUMN: Upload + Input -->
+        <VBox spacing="10" HBox.hgrow="ALWAYS" alignment="TOP_CENTER">
+
+            <!-- Cover Image Upload -->
+            <Label text="Cover Image" styleClass="section-label"/>
+            <Button fx:id="btnUploadImage" text="Upload Image…" onAction="#onUploadImage" maxWidth="Infinity"/>
+            <Label fx:id="lblImageName" text="" styleClass="label-filename"/>
+            <ImageView fx:id="coverImageView" fitWidth="260" fitHeight="180" preserveRatio="true"/>
+
+            <Separator/>
+
+            <!-- Secret Message Input -->
+            <Label text="Secret Message" styleClass="section-label"/>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <RadioButton fx:id="radioText" text="Type text" selected="true" onAction="#onToggleSource">
+                    <toggleGroup><ToggleGroup fx:id="sourceToggle"/></toggleGroup>
+                </RadioButton>
+                <RadioButton fx:id="radioFile" text="Upload .txt" onAction="#onToggleSource">
+                    <toggleGroup><fx:reference source="sourceToggle"/></toggleGroup>
+                </RadioButton>
+            </HBox>
+
+            <TextArea fx:id="txtSecretText" promptText="Enter your secret message…"
+                      prefRowCount="2" wrapText="true" maxHeight="60"/>
+
+            <HBox fx:id="fileUploadBox" spacing="8" alignment="CENTER_LEFT" managed="false" visible="false">
+                <Button fx:id="btnUploadTextFile" text="Upload .txt…" onAction="#onUploadTextFile"/>
+                <Label fx:id="lblTextFileName" text="" styleClass="label-filename"/>
+            </HBox>
+
+            <!-- Encode Button -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button fx:id="btnStartEncode" text="▶ Start Encoding" onAction="#onStartEncode"/>
+                <ProgressIndicator fx:id="progressEncode" visible="false" managed="false"
+                                   prefWidth="24" prefHeight="24"/>
+            </HBox>
+            <Label fx:id="lblEncodeStatus" text="" styleClass="label-error"/>
+        </VBox>
+
+        <Separator orientation="VERTICAL"/>
+
+        <!-- RIGHT COLUMN: Result (always visible, buttons disabled until done) -->
+        <VBox fx:id="resultBox" spacing="10" HBox.hgrow="ALWAYS" alignment="TOP_CENTER">
+
+            <Label fx:id="lblEncodeSuccess" text="" styleClass="label-success"/>
+            <Label text="Stego Image" styleClass="section-label"/>
+            <ImageView fx:id="stegoImageView" fitWidth="260" fitHeight="180"
+                       preserveRatio="true" onMouseClicked="#onImageClicked">
+                <image>
+                    <Image url="@placeholder.png"/>
+                </image>
+            </ImageView>
+            <Button fx:id="btnDownloadKey" text="Download Key File" onAction="#onDownloadKey"
+                    maxWidth="Infinity" disable="true"/>
+        </VBox>
+    </HBox>
+</VBox>

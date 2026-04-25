@@ -1,0 +1,42 @@
+/* ============================================================
+   StegaSecure — Clean Minimal Stylesheet
+   ============================================================ */
+
+/* ---------- Status Labels ---------- */
+.label-success {
+    -fx-text-fill: #27ae60;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.label-error {
+    -fx-text-fill: #e74c3c;
+    -fx-font-size: 12px;
+}
+
+.label-warning {
+    -fx-text-fill: #e74c3c;
+    -fx-font-size: 12px;
+}
+
+.label-filename {
+    -fx-text-fill: #888;
+    -fx-font-size: 12px;
+    -fx-font-style: italic;
+}
+
+/* ---------- Title ---------- */
+.title-label {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.subtitle-label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #666;
+}
+
+.section-label {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}

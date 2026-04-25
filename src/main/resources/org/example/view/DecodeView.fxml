@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.example.controller.DecodeController"
+      spacing="14">
+
+    <padding><Insets top="20" bottom="20" left="30" right="30"/></padding>
+
+    <!-- Back -->
+    <Button text="← Back" onAction="#onBack"/>
+
+    <!-- Title -->
+    <Label text="Decode" styleClass="title-label"/>
+
+    <!-- 1. Stego Image -->
+    <Label text="1. Stego Image" styleClass="section-label"/>
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Button fx:id="btnUploadImage" text="Upload Image…" onAction="#onUploadImage"/>
+        <Label fx:id="lblImageName" text="" styleClass="label-filename"/>
+    </HBox>
+    <Label fx:id="lblImageWarning" text="" styleClass="label-warning" managed="false" visible="false"/>
+
+    <!-- 2. Key File -->
+    <Label text="2. Key File" styleClass="section-label"/>
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Button fx:id="btnUploadKey" text="Upload Key File…" onAction="#onUploadKeyFile"/>
+        <Label fx:id="lblKeyName" text="" styleClass="label-filename"/>
+    </HBox>
+
+    <Separator/>
+
+    <!-- 3. Decode -->
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <Button fx:id="btnStartDecode" text="▶ Start Decoding" onAction="#onStartDecode"/>
+        <ProgressIndicator fx:id="progressDecode" visible="false" managed="false"
+                           prefWidth="24" prefHeight="24"/>
+    </HBox>
+    <Label fx:id="lblDecodeStatus" text="" styleClass="label-error"/>
+
+    <!-- Result (hidden initially) -->
+    <VBox fx:id="resultBox" spacing="10" managed="false" visible="false">
+        <Separator/>
+        <Label fx:id="lblSuccess" text="✓ Decoding complete! Message recovered." styleClass="label-success"/>
+        <Label text="Recovered Message:" styleClass="section-label"/>
+        <TextArea fx:id="txtDecodedMessage" editable="false" prefRowCount="4" wrapText="true"/>
+        <Button fx:id="btnDownloadText" text="Download as .txt" onAction="#onDownloadText"/>
+    </VBox>
+</VBox>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.example.controller.MainMenuController"
+      alignment="CENTER" spacing="30" prefWidth="600" prefHeight="500">
+
+    <padding><Insets top="40" bottom="40" left="40" right="40"/></padding>
+
+    <Label text="StegaSecure" styleClass="title-label"/>
+
+    <VBox alignment="CENTER" spacing="12">
+        <Button fx:id="btnEncode" text="Encode"
+                onAction="#onEncodeClicked" prefWidth="280" prefHeight="40"/>
+        <Button fx:id="btnDecode" text="Decode"
+                onAction="#onDecodeClicked" prefWidth="280" prefHeight="40"/>
+    </VBox>
+</VBox>

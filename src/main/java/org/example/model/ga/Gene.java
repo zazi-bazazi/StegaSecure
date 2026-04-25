@@ -15,6 +15,11 @@ public class Gene extends AbstractGene<Integer> {
     private int blockIndex;
 
 
+    /**
+     *
+     * @param value Coefficient index
+     * @param params params[0] block index
+     */
     public Gene(Integer value, Object... params) {
         super(value);
         this.blockIndex = (int) params[0];

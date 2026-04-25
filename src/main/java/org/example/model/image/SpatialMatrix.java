@@ -137,9 +137,9 @@ public class SpatialMatrix {
                 double cb = cbChannel[x][y];
                 double cr = crChannel[x][y];
 
-                int r = clamp((int) Math.round(yVal + 1.40200 * (cr - GRAY_SCALE_VALUE)));
+                int r = clamp((int) Math.round(yVal + 1.402 * (cr - GRAY_SCALE_VALUE)));
                 int g = clamp((int) Math.round(yVal - 0.344136 * (cb - GRAY_SCALE_VALUE) - 0.714136 * (cr - GRAY_SCALE_VALUE)));
-                int b = clamp((int) Math.round(yVal + 1.77200 * (cb - GRAY_SCALE_VALUE)));
+                int b = clamp((int) Math.round(yVal + 1.772 * (cb - GRAY_SCALE_VALUE)));
 
                 image.setRGB(x, y, (r << 16) | (g << 8) | b);
             }

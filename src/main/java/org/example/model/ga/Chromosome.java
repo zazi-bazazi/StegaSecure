@@ -3,10 +3,7 @@ package org.example.model.ga;
 import org.example.model.ga.abstractClasses.AbstractChromosome;
 import org.example.model.ga.abstractClasses.AbstractGene;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
     private final Random random = new Random();
@@ -59,21 +56,7 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
         LinkedHashSet<AbstractGene<?>> uniqueGenes = new LinkedHashSet<>();
 
         while (uniqueGenes.size() < messageLength) {
-            int randomBlock;
-            int randomCoeff;
-
-            if (validPositions != null && !validPositions.isEmpty()) {
-                // Pick from positions known to have non-zero coefficients
-                int[] pos = validPositions.get((int) (Math.random() * validPositions.size()));
-                randomBlock = pos[0];
-                randomCoeff = pos[1];
-            } else {
-                // Fallback: random selection (used in tests or when pool isn't available)
-                randomBlock = (int) (Math.random() * totalBlocks);
-                randomCoeff = 1 + (int) (Math.random() * USEABLE_COEFF_PER_BLOCK);
-            }
-
-            uniqueGenes.add(new Gene(randomCoeff, randomBlock));
+            uniqueGenes.add(getRandomGene(validPositions, totalBlocks));
         }
         Chromosome newChromo = new Chromosome();
         newChromo.chromosomeGenes.addAll(uniqueGenes);
@@ -87,6 +70,7 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
      * @return
      */
     @Override
+    @Deprecated
     public AbstractChromosome<ArrayList<AbstractGene<?>>> generateChromosomeMath(Object... params) {
         if (params.length != 2) {
             // TODO make a custom Exception for this state
@@ -128,6 +112,9 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
      */
     @Override
     public void crossover(AbstractChromosome<?> chro1, AbstractChromosome<?> chro2, Object... params) {
+        int totalBlocks = (int) params[0];
+        List<int[]> validPositions = (List<int[]>) params[1];
+
         for (int i = 0; i < chro1.getNumGenes(); i++) {
             Gene copy1 = new Gene(chro1.getGeneByIndex(i));
             Gene copy2 = new Gene(chro2.getGeneByIndex(i));
@@ -140,11 +127,10 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
             } else if (!this.getGenes().contains(backupGene)) {
                 this.addGene(backupGene);
             } else {
-                int totalBlocks = (int) params[0];
-                Gene emergencyGene = new Gene(1 + random.nextInt(USEABLE_COEFF_PER_BLOCK), random.nextInt(totalBlocks));
+                Gene emergencyGene = getRandomGene(validPositions, totalBlocks);
 
                 while (this.getGenes().contains(emergencyGene)) {
-                    emergencyGene = new Gene(1 + random.nextInt(USEABLE_COEFF_PER_BLOCK), random.nextInt(totalBlocks));
+                    emergencyGene = getRandomGene(validPositions, totalBlocks);
                 }
                 this.addGene(emergencyGene);
             }
@@ -202,9 +188,30 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
         }
     }
 
+    private Gene getRandomGene(List<int[]> validPositions, int totalBlocks) {
+        int randomBlock;
+        int randomCoeff;
+        if (validPositions != null && !validPositions.isEmpty()) {
+            // Pick from positions known to have non-zero coefficients
+            int[] pos = validPositions.get((int) (Math.random() * validPositions.size()));
+            randomBlock = pos[0];
+            randomCoeff = pos[1];
+        } else {
+            // Fallback: random selection (used in tests or when pool isn't available)
+            randomBlock = (int) (Math.random() * totalBlocks);
+            randomCoeff = 1 + (int) (Math.random() * USEABLE_COEFF_PER_BLOCK);
+        }
+        return new Gene(randomCoeff, randomBlock);
+    }
+
     @Override
     public String toString() {
         return "Chromosome{genes=" + chromosomeGenes.size() + ", fitness=" + String.format("%.4f", fitnessScore)
                 + " Gene= " + this.chromosomeGenes + "}";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
     }
 }

@@ -48,8 +48,10 @@ public abstract class AbstractGeneticAlgorithm {
         double previousAvgFitness = Double.NEGATIVE_INFINITY;
         int stagnationCounter = 0;
 
+        boolean finishEarly = false;
+
         System.out.println("Started evolving");
-        for (int generation = 0; generation < this.maxGenerations; generation++) {
+        for (int generation = 0; generation < this.maxGenerations  && !finishEarly; generation++) {
 
             double sumFitness = 0.0;
             for (int i = 0; i < this.populationSize; i++) {
@@ -70,13 +72,6 @@ public abstract class AbstractGeneticAlgorithm {
             }
             previousAvgFitness = avgFitness;
 
-            if (stagnationCounter >= STAGNATION_LIMIT) {
-                System.out.println("[RESTART] Stagnation detected at generation " + generation
-                        + " — restarting bottom 50% of population.");
-                restartPopulation(emptyChro);
-                stagnationCounter = 0;
-            }
-
             AbstractChromosome<?> currentBest = getBestChromosome();
 
             if (bestChromosome == null || currentBest.getFitnessScore() > bestChromosome.getFitnessScore()) {
@@ -85,8 +80,14 @@ public abstract class AbstractGeneticAlgorithm {
 
             if (stoppingCondition.test(currentBest)) {
                 System.out.println("Evolution finished early at generation: " + generation);
-                break ;
+                finishEarly = true;
+            } else if (stagnationCounter >= STAGNATION_LIMIT) {
+                System.out.println("[RESTART] Stagnation detected at generation " + generation
+                        + " — restarting bottom 50% of population.");
+                restartPopulation(emptyChro);
+                stagnationCounter = 0;
             }
+
         }
 
         return bestChromosome;

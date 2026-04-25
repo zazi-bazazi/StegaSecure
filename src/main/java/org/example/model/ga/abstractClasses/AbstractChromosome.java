@@ -1,6 +1,9 @@
 package org.example.model.ga.abstractClasses;
 
+import org.example.model.ga.Chromosome;
+
 import java.util.Collection;
+import java.util.Objects;
 
 public abstract class AbstractChromosome<T extends Collection<AbstractGene<?>>>
         implements Comparable<AbstractChromosome<?>> {
@@ -38,4 +41,16 @@ public abstract class AbstractChromosome<T extends Collection<AbstractGene<?>>>
 
     public abstract void mutate(Object... params);
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        AbstractChromosome<?> that = (AbstractChromosome<?>) o;
+        return Objects.equals(this.chromosomeGenes, that.chromosomeGenes);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(chromosomeGenes);
+    }
 }

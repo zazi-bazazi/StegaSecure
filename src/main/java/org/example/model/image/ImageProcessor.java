@@ -1,7 +1,12 @@
 package org.example.model.image;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
+/**
+ *
+ *
+ */
 public class ImageProcessor {
 
     private static final int BLOCK_SIZE = 8;
@@ -72,9 +77,15 @@ public class ImageProcessor {
                 // Extract a single 8x8 block from the spatial image
                 double[][] spatialBlock = extractBlock(image, startPixelX, startPixelY);
 
+//                System.out.println("SpatialBlock: " + Arrays.deepToString(spatialBlock));
+
                 double[][] frequencyBlock = DCTMath.calculateDCT(spatialBlock);
 
+//                System.out.println("FrequencyBlock: " + Arrays.deepToString(frequencyBlock));
+
                 double[][] quantizedBlock = DCTMath.quantize(frequencyBlock);
+
+//                System.out.println("QuantizedBlock: " + Arrays.deepToString(quantizedBlock));
 
                 // Save the results into your SparseMatrix
                 saveBlockToSparseMatrix(sparseMatrix, quantizedBlock, blockIndex);
@@ -88,7 +99,7 @@ public class ImageProcessor {
     /**
      * Converts a sparse frequency domain matrix back into a spatial image.
      * <p>
-     * Unpacks the zig-zag coefficients, dequantizes them, applies the Inverse DCT,
+     * Unpacks the zigzag coefficients, dequantizes them, applies the Inverse DCT,
      * and stitches the 8x8 blocks back into a full image grid.
      * </p>
      *

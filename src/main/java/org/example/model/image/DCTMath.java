@@ -6,6 +6,8 @@ public class DCTMath {
     }
 
     private static final int BLOCK_SIZE = 8;
+    private static final int PIXEL_MAX_VALUE = 255;
+    private static final int PIXEL_MIN_VALUE = 0;
     //
     public static final int[][] LUMA_QUANTIZATION = {
             { 16, 11, 10, 16, 24, 40, 51, 61 },
@@ -90,7 +92,7 @@ public class DCTMath {
                 double pixelValue = (0.25 * sum) + 128.0;
 
                 // fix the
-                spatialBlock[x][y] = Math.max(0, Math.min(255, Math.round(pixelValue)));
+                spatialBlock[x][y] = Math.max(PIXEL_MIN_VALUE, Math.min(PIXEL_MAX_VALUE, Math.round(pixelValue)));
             }
         }
         return spatialBlock;

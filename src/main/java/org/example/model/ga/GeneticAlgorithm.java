@@ -73,12 +73,12 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
      */
     @Override
     public void nextGeneration(Object... params) {
-        AbstractChromosome<?> parent1 = select();
-        AbstractChromosome<?> parent2 = select();
+        AbstractChromosome<?> parent1 = this.select();
+        AbstractChromosome<?> parent2 = this.select();
 
-        do {
-            parent2 = select();
-        } while (parent2 == parent1);
+        while(parent1.equals(parent2)) {
+            parent2 = this.select();
+        }
 
         AbstractChromosome<?> child = this.crossover(parent1, parent2);
         this.mutate(child, this.totalBlocks, this.mutationRate, this.validPositions);
@@ -101,7 +101,7 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
     protected AbstractChromosome<?> crossover(AbstractChromosome<?> chromosome1, AbstractChromosome<?> chromosome2,
             Object... params) {
         AbstractChromosome<?> newChro = chromosome1.createEmpty();
-        newChro.crossover(chromosome1, chromosome2, this.totalBlocks);
+        newChro.crossover(chromosome1, chromosome2, this.totalBlocks, this.validPositions);
         return newChro;
     }
 
@@ -130,8 +130,8 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         neighborhood.add(anchor);
 
         AbstractChromosome<?> best = null;
-        int k = Math.min(this.tournamentSize, neighborhood.size());
-        for (int i = 0; i < k; i++) {
+
+        for (int i = 0; i < this.tournamentSize; i++) {
             AbstractChromosome<?> candidate = neighborhood.get(random.nextInt(neighborhood.size()));
             if (best == null || candidate.getFitnessScore() > best.getFitnessScore()) {
                 best = candidate;

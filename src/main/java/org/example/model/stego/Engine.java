@@ -42,7 +42,7 @@ public class Engine {
         return instance;
     }
 
-    public AbstractChromosome<?> geneticAlgorithmManager(String secretBits, int totalBlocks) {
+    public AbstractChromosome<?> geneticAlgorithmManager(String secretBits, int totalBlocks) throws Exception {
         Population emptyPop = new Population();
         AbstractChromosome<?> emptyChro = new Chromosome();
 
@@ -82,6 +82,10 @@ public class Engine {
         }
         System.out.println("[INFO] Valid non-zero coefficient positions: " + validPositions.size()
                 + " (need " + secretBits.length() + " bits)");
+
+        if (validPositions.size() < secretBits.length()) {
+            throw new Exception("not enough valid positions in image");
+        }
 
         GeneticAlgorithm ga = new GeneticAlgorithm(evaluator, totalBlocks, secretBits.length(), validPositions);
         setGeneticAlgorithm(ga);
@@ -196,13 +200,14 @@ public class Engine {
     private double parityModifier(double coefficient, char bit) {
         int intCoef = (int) Math.round(coefficient);
         if ((Math.abs(intCoef) % 2) == bit - '0') {
-            return (double) intCoef;
+            return intCoef;
         }
-        if (intCoef >= 0) {
-            return (intCoef % 2 == 0) ? (double) (intCoef + 1) : (double) (intCoef - 1);
+        if (intCoef > 0) {
+            return (double) intCoef - 1;
+        } else if (intCoef < 0) {
+            return (double) intCoef + 1;
         } else {
-            // For negative: -4 → LSB of abs value, adjust carefully
-            return (intCoef % 2 == 0) ? (double) (intCoef - 1) : (double) (intCoef + 1);
+            return 1.0;
         }
     }
 
@@ -328,8 +333,9 @@ public class Engine {
      * @throws IOException If the image file cannot be read or processed.
      * @see #geneticAlgorithmManager(String, int)
      * @see #implementChromosomeToImage(String, AbstractChromosome)
+     * @see ImageProcessor#convertToFrequencyDomain(SpatialMatrix)  
      */
-    public FilesRecord encode(String secretText, File inputImagePath) throws IOException {
+    public FilesRecord encode(String secretText, File inputImagePath) throws Exception {
         String secretBits = textToBinaryString(secretText);
         System.out.println("\n[INFO] Bits to hide: " + secretBits.length() + " bits.");
 

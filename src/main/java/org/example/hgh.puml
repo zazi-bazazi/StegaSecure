@@ -1,0 +1,274 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+package "org.example" {
+  class Main {
+    - WINDOW_WIDTH : double
+    - WINDOW_HEIGHT : double
+    + start(Stage) : void
+    + main(String[]) : void
+  }
+}
+
+package "org.example.controller" {
+  class DecodeController {
+    - selectedStegoImage : File
+    - selectedKeyFile : File
+    - decodedText : String
+    + onUploadImage() : void
+    + onUploadKeyFile() : void
+    + onStartDecode() : void
+    + onDownloadText() : void
+    + onBack() : void
+  }
+  class EncodeController {
+    - selectedCoverImage : File
+    - selectedTextFile : File
+    - stegoResultImage : BufferedImage
+    - keyFileData : String
+    + onUploadImage() : void
+    + onToggleSource() : void
+    + onUploadTextFile() : void
+    + onStartEncode() : void
+    + onImageClicked() : void
+    + onDownloadKey() : void
+    + onBack() : void
+  }
+  class MainMenuController {
+    + onEncodeClicked() : void
+    + onDecodeClicked() : void
+  }
+}
+
+package "org.example.model.ga.abstractClasses" {
+  abstract class AbstractChromosome<T extends Collection<AbstractGene<?>>> {
+    # fitnessScore : Double
+    # chromosomeGenes : T
+    + getFitnessScore() : Double
+    + setFitnessScore(Double) : void
+    + getNumGenes() : int
+    {abstract} + getGenes() : T
+    {abstract} + createEmpty() : AbstractChromosome<T>
+    {abstract} + addGene(AbstractGene<?>) : void
+    {abstract} + getGeneByIndex(int) : AbstractGene<?>
+    {abstract} + generateChromosomeRand(Object...) : AbstractChromosome<T>
+    {abstract} + generateChromosomeMath(Object...) : AbstractChromosome<T>
+    {abstract} + crossover(AbstractChromosome<?>, AbstractChromosome<?>, Object...) : void
+    {abstract} + tourmentSelection(AbstractChromosome<?>, AbstractChromosome<?>, Object...) : void
+    {abstract} + mutate(Object...) : void
+  }
+
+  abstract class AbstractGene<T> {
+    # value : T
+    + getValue() : T
+    + setValue(T) : void
+  }
+
+  abstract class AbstractGeneticAlgorithm {
+    # mutationRate : double
+    # crossoverRate : double
+    # populationSize : int
+    # maxGenerations : int
+    # population : AbstractPopulation
+    # fitness : FitnessFunction
+    # bestChromosome : AbstractChromosome<?>
+    # random : Random
+    + evolve(AbstractPopulation, AbstractChromosome<?>, Predicate<AbstractChromosome<?>>) : AbstractChromosome<?>
+    {abstract} + runGeneration() : void
+    {abstract} + initializePopulation(AbstractPopulation, AbstractChromosome<?>, Object...) : void
+    {abstract} + nextGeneration(Object...) : void
+    {abstract} # crossover(AbstractChromosome<?>, AbstractChromosome<?>, Object...) : AbstractChromosome<?>
+    {abstract} # mutate(AbstractChromosome<?>, Object...) : void
+    {abstract} # select(Object...) : AbstractChromosome<?>
+    {abstract} # restartPopulation(AbstractChromosome<?>) : void
+    + savePopulationToFile(String) : void
+  }
+
+  abstract class AbstractPopulation {
+    {abstract} + addChromosome(AbstractChromosome<?>) : void
+    {abstract} + addEdge(AbstractChromosome<?>, AbstractChromosome<?>) : void
+    {abstract} + getNeighbors(AbstractChromosome<?>) : List<AbstractChromosome<?>>
+    {abstract} + replaceNode(AbstractChromosome<?>, AbstractChromosome<?>) : void
+    {abstract} + getChromosomes() : ArrayList<AbstractChromosome<?>>
+  }
+
+  interface FitnessFunction {
+    + evaluateFitness(AbstractChromosome<?>) : double
+  }
+}
+
+package "org.example.model.ga" {
+  class Chromosome {
+    - random : Random
+    - USEABLE_COEFF_PER_BLOCK : int
+    + createEmpty() : AbstractChromosome<ArrayList<AbstractGene<?>>>
+    + addGene(AbstractGene<?>) : void
+    + getGenes() : ArrayList<AbstractGene<?>>
+    + getGeneByIndex(int) : AbstractGene<?>
+    + generateChromosomeRand(Object...) : AbstractChromosome<ArrayList<AbstractGene<?>>>
+    + generateChromosomeMath(Object...) : AbstractChromosome<ArrayList<AbstractGene<?>>>
+    + crossover(AbstractChromosome<?>, AbstractChromosome<?>, Object...) : void
+    + tourmentSelection(AbstractChromosome<?>, AbstractChromosome<?>, Object...) : void
+    + mutate(Object...) : void
+  }
+
+  class Gene {
+    - COEFF_MIN : int
+    - COEFF_MAX : int
+    - blockIndex : int
+    + getBlockIndex() : int
+    + setBlockIndex(int) : void
+    + getCoefficientIndex() : int
+    + buildMidFrequencyPool(int) : AbstractChromosome<?>
+  }
+
+  class GeneticAlgorithm {
+    - BLOCK_SIZE : int
+    - totalBlocks : int
+    - messageLength : int
+    - tournamentSize : int
+    - validPositions : List<int[]>
+    + runGeneration() : void
+    + initializePopulation(AbstractPopulation, AbstractChromosome<?>, Object...) : void
+    + nextGeneration(Object...) : void
+    # crossover(AbstractChromosome<?>, AbstractChromosome<?>, Object...) : AbstractChromosome<?>
+    # mutate(AbstractChromosome<?>, Object...) : void
+    # select(Object...) : AbstractChromosome<?>
+    # restartPopulation(AbstractChromosome<?>) : void
+  }
+
+  class Population {
+    - adjList : Map<AbstractChromosome<?>, List<AbstractChromosome<?>>>
+    + addChromosome(AbstractChromosome<?>) : void
+    + addEdge(AbstractChromosome<?>, AbstractChromosome<?>) : void
+    + getChromosomes() : ArrayList<AbstractChromosome<?>>
+    + getNeighbors(AbstractChromosome<?>) : List<AbstractChromosome<?>>
+    + replaceNode(AbstractChromosome<?>, AbstractChromosome<?>) : void
+  }
+}
+
+package "org.example.model.image" {
+  class DCTMath {
+    - BLOCK_SIZE : int
+    - PIXEL_MAX_VALUE : int
+    - PIXEL_MIN_VALUE : int
+    + LUMA_QUANTIZATION : int[][]
+    + calculateDCT(double[][]) : double[][]
+    + calculateIDCT(double[][]) : double[][]
+    + quantize(double[][]) : double[][]
+    + dequantize(double[][]) : double[][]
+  }
+
+  class DCTNode {
+    - coefficientIndex : int
+    - value : double
+    + getCoefficientIndex() : int
+    + getValue() : double
+    + setValue(double) : void
+  }
+
+  class FrequencyDomain {
+    - blockCoefficients : ArrayList<ArrayList<DCTNode>>
+    - adjacencyList : ArrayList<List<Integer>>
+    - totalBlocks : int
+    - blocksX : int
+    - blocksY : int
+    - imageWidth : int
+    - imageHeight : int
+    + setCoefficient(int, int, double) : void
+    + getCoefficient(int, int) : double
+    + getNonZeroCoefficientsForBlock(int) : ArrayList<DCTNode>
+    + getNeighborBlocks(int) : List<Integer>
+    + getWidth() : int
+    + getHeight() : int
+    + getBlocksX() : int
+    + getBlocksY() : int
+    + getTotalBlocks() : int
+  }
+
+  class ImageProcessor {
+    - BLOCK_SIZE : int
+    - ZIGZAG_INDEX : int[][]
+    + ZIGZAG_U : int[]
+    + ZIGZAG_V : int[]
+    + getInstance() : ImageProcessor
+    + convertToFrequencyDomain(SpatialDomain) : FrequencyDomain
+    + convertToSpatialDomain(FrequencyDomain) : SpatialDomain
+    - saveBlockToSparseMatrix(FrequencyDomain, double[][], int) : void
+    - extractBlock(SpatialDomain, int, int) : double[][]
+    - writeBlockToImage(SpatialDomain, double[][], int, int) : void
+    - unpackBlock(FrequencyDomain, int) : double[][]
+  }
+
+  class SpatialDomain {
+    - width : int
+    - height : int
+    - yChannel : double[][]
+    - cbChannel : double[][]
+    - crChannel : double[][]
+    - PIXEL_MAX_VALUE : int
+    - PIXEL_MIN_VALUE : int
+    - GRAY_SCALE_VALUE : double
+    + getWidth() : int
+    + getHeight() : int
+    + getGrayscalePixel(int, int) : double
+    + setYChannel(int, int, double) : void
+    + saveImage() : BufferedImage
+    + copyChromaFrom(SpatialDomain) : void
+  }
+}
+
+package "org.example.model.stego" {
+  class Engine {
+    - instance : Engine
+    - ga : GeneticAlgorithm
+    - frequencyDomain : FrequencyDomain
+    - spatialDomain : SpatialDomain
+    + getInstance() : Engine
+    + geneticAlgorithmManager(String, int) : AbstractChromosome<?>
+    - implementChromosomeToImage(String, AbstractChromosome<?>) : EmbeddedResult
+    - evaluateFitness(AbstractChromosome<?>, String) : double
+    - parityModifier(double, char) : double
+    + loadCoverImage(SpatialDomain, FrequencyDomain) : void
+    + textToBinaryString(String) : String
+    - binaryStringToText(String) : String
+    + decode(File, AbstractChromosome<?>) : String
+    + encode(String, File) : FilesRecord
+    + saveChromosomeKey(AbstractChromosome<?>) : void
+    + generateChromosomeData(AbstractChromosome<?>) : String
+    + saveToFile(String, String, String) : void
+    + loadChromosomeKey(File) : AbstractChromosome<?>
+  }
+
+  class ImageMetrics {
+    - MAX_PIXEL_VALUE : double
+    - MINIMAL_QUALITY : double
+    - PENALTY : double
+    + calculatePSNR(SpatialDomain, SpatialDomain) : double
+    - calculateMSE(SpatialDomain, SpatialDomain) : double
+    + calculatePSNR(FrequencyDomain, String, int, double) : double
+  }
+}
+
+' Relationships
+AbstractChromosome "1" *-- "*" AbstractGene
+AbstractPopulation "1" *-- "*" AbstractChromosome
+AbstractGeneticAlgorithm "1" o-- "1" AbstractPopulation
+AbstractGeneticAlgorithm "1" o-- "1" FitnessFunction
+AbstractGeneticAlgorithm "1" o-- "1" AbstractChromosome
+
+Chromosome --|> AbstractChromosome
+Gene --|> AbstractGene
+GeneticAlgorithm --|> AbstractGeneticAlgorithm
+Population --|> AbstractPopulation
+
+FrequencyDomain "1" *-- "*" DCTNode
+
+Engine "1" o-- "1" GeneticAlgorithm
+Engine "1" o-- "1" FrequencyDomain
+Engine "1" o-- "1" SpatialDomain
+
+DecodeController ..> Engine : uses
+EncodeController ..> Engine : uses
+
+@enduml

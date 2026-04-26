@@ -156,35 +156,35 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
         for (int i = 0; i < this.getNumGenes(); i++) {
             Gene currentGene = (Gene) this.getGeneByIndex(i);
 
-            if (random.nextDouble() >= mutationRate)
-                continue;
+            if (random.nextDouble() < mutationRate) {
+                Gene candidate;
+                int attempts = 0;
+                do {
+                    int newBlock;
+                    int newCoeff;
 
-            Gene candidate;
-            int attempts = 0;
-            do {
-                int newBlock;
-                int newCoeff;
+                    if (validPositions != null && !validPositions.isEmpty()) {
+                        int[] pos = validPositions.get(random.nextInt(validPositions.size()));
+                        newBlock = pos[0];
+                        newCoeff = pos[1];
+                    } else {
+                        newBlock = random.nextInt(totalBlocks);
+                        newCoeff = 1 + random.nextInt(USEABLE_COEFF_PER_BLOCK);
+                    }
 
-                if (validPositions != null && !validPositions.isEmpty()) {
-                    int[] pos = validPositions.get(random.nextInt(validPositions.size()));
-                    newBlock = pos[0];
-                    newCoeff = pos[1];
-                } else {
-                    newBlock = random.nextInt(totalBlocks);
-                    newCoeff = 1 + random.nextInt(USEABLE_COEFF_PER_BLOCK);
-                }
+                    candidate = new Gene(newCoeff, newBlock);
+                    attempts++;
 
-                candidate = new Gene(newCoeff, newBlock);
-                attempts++;
+                    if (attempts > 50) {
+                        candidate = currentGene;
+                        lessThan50Attempts = false;
+                    }
+                } while (this.getGenes().contains(candidate) && lessThan50Attempts);
 
-                if (attempts > 50) {
-                    candidate = currentGene;
-                    lessThan50Attempts = false;
-                }
-            } while (this.getGenes().contains(candidate) && lessThan50Attempts);
+                currentGene.setBlockIndex(candidate.getBlockIndex());
+                currentGene.setValue(candidate.getCoefficientIndex());
+            }
 
-            currentGene.setBlockIndex(candidate.getBlockIndex());
-            currentGene.setValue(candidate.getCoefficientIndex());
         }
     }
 

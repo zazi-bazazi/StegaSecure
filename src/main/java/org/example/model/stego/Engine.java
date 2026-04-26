@@ -80,6 +80,7 @@ public class Engine {
                 }
             }
         }
+
         System.out.println("[INFO] Valid non-zero coefficient positions: " + validPositions.size()
                 + " (need " + secretBits.length() + " bits)");
 

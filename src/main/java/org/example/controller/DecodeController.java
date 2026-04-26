@@ -107,7 +107,6 @@ public class DecodeController {
             return;
         }
 
-        // Show progress
         lblDecodeStatus.setText("");
         progressDecode.setVisible(true);
         progressDecode.setManaged(true);
@@ -127,7 +126,6 @@ public class DecodeController {
         decodeTask.setOnSucceeded(event -> {
             decodedText = decodeTask.getValue();
 
-            // Check for decode errors from Engine
             if (decodedText != null && decodedText.startsWith("[DECODE ERROR]")) {
                 showError(decodedText);
                 progressDecode.setVisible(false);

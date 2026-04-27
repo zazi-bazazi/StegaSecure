@@ -159,6 +159,8 @@ public class Chromosome extends AbstractChromosome<ArrayList<AbstractGene<?>>> {
             if (random.nextDouble() < mutationRate) {
                 Gene candidate;
                 int attempts = 0;
+                lessThan50Attempts = true;
+
                 do {
                     int newBlock;
                     int newCoeff;

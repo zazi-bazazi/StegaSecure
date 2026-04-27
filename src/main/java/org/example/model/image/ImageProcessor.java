@@ -87,7 +87,7 @@ public class ImageProcessor {
                 // System.out.println("QuantizedBlock: " + Arrays.deepToString(quantizedBlock));
 
                 // Save the results into your SparseMatrix
-                saveBlockToSparseMatrix(sparseMatrix, quantizedBlock, blockIndex);
+                this.saveBlockToSparseMatrix(sparseMatrix, quantizedBlock, blockIndex);
 
                 blockIndex++;
             }
@@ -120,7 +120,7 @@ public class ImageProcessor {
                 double[][] frequencyBlock = DCTMath.dequantize(quantizedBlock);
                 double[][] spatialBlock = DCTMath.calculateIDCT(frequencyBlock);
 
-                writeBlockToImage(stegoImage, spatialBlock, blockX * BLOCK_SIZE, blockY * BLOCK_SIZE);
+                this.writeBlockToImage(stegoImage, spatialBlock, blockX * BLOCK_SIZE, blockY * BLOCK_SIZE);
 
                 blockIndex++;
             }

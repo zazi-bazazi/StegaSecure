@@ -351,7 +351,7 @@ public class Engine {
         this.loadCoverImage(spatialImage, frequencyImage);
 
         System.out.println("\n[INFO] Starting Genetic Algorithm Evolution...");
-        AbstractChromosome<?> winningChromosome = geneticAlgorithmManager(secretBits, totalBlocks);
+        AbstractChromosome<?> winningChromosome = this.geneticAlgorithmManager(secretBits, totalBlocks);
 
         // return buildAndSaveStegoImage(winningChromosome, secretBits, outputPath);
 

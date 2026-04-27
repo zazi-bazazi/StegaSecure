@@ -25,7 +25,7 @@ public class GeneticAlgorithm extends AbstractGeneticAlgorithm {
         this.totalBlocks = (int) params[0];
         this.messageLength = (int) params[1];
         this.validPositions = (params.length > 2) ? (List<int[]>) params[2] : null;
-        this.tournamentSize = 5;
+        this.tournamentSize = 3;
     }
 
     /**
